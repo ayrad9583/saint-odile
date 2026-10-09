@@ -3743,6 +3743,13 @@ function mpBrowseStart() {
 }
 function mpServerMessage(m) {
   if (!m || !m.type) return;
+  if (m.type === 'relay') {
+    if (NET.host) {
+      const item = MP_SIGNAL.hostPeers[m.from];
+      if (item && item.link) netOnMsg(item.link, m.data);
+    } else if (NET.on && NET.hostLink) netOnMsg(NET.hostLink, m.data);
+    return;
+  }
   if (m.type === 'rooms') {
     for (const id of Object.keys(mpRooms)) delete mpRooms[id];
     for (const r of (m.rooms || [])) mpRooms[r.id] = Object.assign({}, r, {seen:performance.now()});
@@ -3754,7 +3761,11 @@ function mpServerMessage(m) {
   }
   if (m.type === 'joined') {
     NET.roomJoined = m.room.id; NET.roomName = m.room.name; NET.max = m.room.max; NET.pw = MP_SIGNAL.roomPassword;
-    mpStatus('Salon trouvé. Connexion sécurisée au joueur hôte…'); return;
+    NET.on = true; NET.host = false; NET.joined = false; NET.me = 'g?';
+    const link = { id: null, relay: true, send: s => mpWsSend({type:'relay', data:s}), close: () => {} };
+    NET.hostLink = link;
+    link.send(JSON.stringify({t:'hello', n:NET.name, pw:MP_SIGNAL.roomPassword}));
+    mpStatus('Salon trouvé. Connexion via le serveur…'); return;
   }
   if (m.type === 'join-error') { mpStatus(m.message || 'Impossible de rejoindre ce salon.'); return; }
   if (m.type === 'peer-join' && NET.host) { mpHostPeer(m.peerId, m.name); return; }
@@ -3769,18 +3780,12 @@ function mpServerMessage(m) {
   }
   if (m.type === 'room-started') { if (NET.host) { /* local host starts the game */ } return; }
 }
-async function mpHostPeer(peerId, peerName) {
+function mpHostPeer(peerId, peerName) {
   if (Object.keys(MP_SIGNAL.hostPeers).length >= NET.max - 1) { mpWsSend({type:'reject-peer', peerId, reason:'full'}); return; }
-  const pc = new RTCPeerConnection(RTC_CFG), ch = pc.createDataChannel('so');
-  const link = { id: peerId, rtc: true, send: s => { if (ch.readyState === 'open') ch.send(s); }, close: () => { try { pc.close(); } catch (_) {} } };
-  ch.onmessage = e => netOnMsg(link, e.data);
-  ch.onclose = () => netLinkClosed(link);
-  ch.onopen = () => mpStatus((peerName || 'Un joueur') + ' connecté.');
-  MP_SIGNAL.hostPeers[peerId] = {pc, link};
-  try {
-    await pc.setLocalDescription(await pc.createOffer()); await waitIce(pc);
-    mpWsSend({type:'signal', roomId:NET.room, to:peerId, data:{type:'offer', sdp:pc.localDescription}});
-  } catch (e) { mpStatus('Erreur de connexion au joueur : ' + e.message); }
+  // Use the server as a relay: this works even when either network blocks WebRTC.
+  const link = { id: null, relay: true, send: s => mpWsSend({type:'relay', to:peerId, data:s}), close: () => {} };
+  MP_SIGNAL.hostPeers[peerId] = {link, peerName};
+  mpStatus((peerName || 'Un joueur') + ' se connecte via le serveur…');
 }
 async function mpHostSignal(peerId, data) {
   const item = MP_SIGNAL.hostPeers[peerId]; if (!item || !data) return;
