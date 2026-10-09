@@ -183,7 +183,7 @@ Flashbang · 2 [G]</div>
         <dt>Regarder</dt><dd>Glisser à droite</dd>
         <dt>Actions</dt><dd>Boutons Lampe et Courir</dd>
       </dl>
-      <label id="classPicker">Classe de combat<select id="classSelect"><option value="assaut">Assaut — polyvalent</option><option value="medecin">Médecin — endurance</option><option value="eclaireur">Éclaireur — rapide, 3 flashbangs</option><option value="soutien">Soutien — souffle renforcé</option></select><span id="classDesc">Équilibré : vitesse et endurance standard, 2 flashbangs.</span></label>
+      <label id="classPicker">Classe de combat<select id="classSelect"><option value="assaut">Assaut — polyvalent</option><option value="medecin">Médecin — endurance</option><option value="eclaireur">Éclaireur — rapide, 3 flashbangs</option><option value="soutien">Soutien — souffle renforcé</option><option value="gardien">Gardien — résiste mieux aux erreurs, lent</option><option value="technicien">Technicien — récupère les objectifs plus vite, 2 flashbangs</option><option value="survivant">Survivant — rapide et discret, 1 flashbang</option></select><span id="classDesc">Équilibré : vitesse et endurance standard, 2 flashbangs.</span></label>
       <button class="btn" id="startBtn" type="button" disabled>Construction de l'hôpital…</button>
       <button class="btn ghost" id="chapter2Btn" type="button" disabled>Chapitre II · Dernier métro</button>
       <button class="btn ghost" id="chapter3Btn" type="button" disabled>Chapitre III · Maple Court</button>
@@ -1291,6 +1291,31 @@ function buildWorld() {
   );
 }
 let mwalk;
+function buildCornfield() {
+  cornfieldRoot=new THREE.Group(); scene.add(cornfieldRoot); cornfieldRoot.visible=false;
+  const mat=(color,roughness=.95)=>new THREE.MeshStandardMaterial({color,roughness});
+  const soil=mat(0x29271c), stalk=mat(0x59613a), leaf=mat(0x697443), dry=mat(0x8c8150), wood=mat(0x373128), rust=mat(0x4b211b);
+  const add=(geo,m,x,y,z,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=true;cornfieldRoot.add(o);return o;};
+  add(new THREE.BoxGeometry(28,.16,20),soil,14,-.13,10);
+  // Rangées denses de maïs avec deux allées irrégulières : visibilité courte, silhouettes qui disparaissent entre les plants.
+  for(let z=1;z<19;z+=.62) for(let x=1.1;x<27;x+=.72){
+    if((z>8.1&&z<11.8) || (x>12.3&&x<15.2&&z>3&&z<17)) continue;
+    const h=1.45+Math.random()*.75, xx=x+(Math.random()-.5)*.22;
+    add(new THREE.CylinderGeometry(.035,.06,h,5),stalk,xx,h/2,z);
+    for(let k=0;k<3;k++){const side=k%2?1:-1;add(new THREE.ConeGeometry(.055,.75+Math.random()*.25,4),leaf,xx+side*.16,.3+k*.38,z,0,0,side*side*.72);}
+    if(Math.random()<.24) add(new THREE.ConeGeometry(.06,.28,5),dry,xx,h-.1,z);
+  }
+  // Ferme en bois, silo, clôture cassée et lampe de chantier.
+  add(new THREE.BoxGeometry(3.7,2.5,2.8),wood,24.2,1.25,16.2);
+  add(new THREE.ConeGeometry(2.8,1.35,4),rust,24.2,3.15,16.2,0,Math.PI/4,0);
+  add(new THREE.BoxGeometry(.08,1.4,.08),dry,22.1,.7,14.4);add(new THREE.BoxGeometry(.08,1.4,.08),dry,26.2,.7,14.4);
+  for(let x=22.1;x<26.3;x+=.7)add(new THREE.BoxGeometry(.7,.08,.05),wood,x,.45,14.4);
+  add(new THREE.CylinderGeometry(.65,.72,3.7,10),mat(0x55574c),20,1.85,3.3);
+  const glow=new THREE.PointLight(0xb8a66c,1.15,7,2);glow.position.set(24,2.1,16);cornfieldRoot.add(glow);
+  // Caméra de surveillance et panneau d'avertissement.
+  add(new THREE.BoxGeometry(.45,.3,.2),mat(0x171a17,.4),3,2.4,2);
+  const lamp=new THREE.PointLight(0x9cae7b,.35,5);lamp.position.set(3,2.1,2);cornfieldRoot.add(lamp);
+}
 function buildChapterDressing() {
   const box=(root,geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;m.receiveShadow=true;root.add(m);return m;};
   const mat=(color,roughness=.8,metalness=0,emissive=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness,emissive});
@@ -1919,7 +1944,10 @@ const CLASS_CONFIG = {
   assaut: { label:'Assaut', speed:1.05, stamina:1, grenades:2, desc:'Équilibré : vitesse et endurance standard, 2 flashbangs.' },
   medecin: { label:'Médecin', speed:.97, stamina:1.3, grenades:1, desc:'Endurance renforcée pour courir plus longtemps, 1 flashbang.' },
   eclaireur: { label:'Éclaireur', speed:1.14, stamina:1.05, grenades:3, desc:'Le plus rapide, avec 3 flashbangs pour semer les créatures.' },
-  soutien: { label:'Soutien', speed:.94, stamina:1.55, grenades:2, desc:'Récupère vite son souffle, mais se déplace moins vite. 2 flashbangs.' }
+  soutien: { label:'Soutien', speed:.94, stamina:1.55, grenades:2, desc:'Récupère vite son souffle, mais se déplace moins vite. 2 flashbangs.' },
+  gardien: { label:'Gardien', speed:.88, stamina:1.25, grenades:3, desc:'Très endurant et 3 flashbangs, mais plus lent.' },
+  technicien: { label:'Technicien', speed:1.0, stamina:1.1, grenades:2, desc:'Équilibré, avec une lampe plus fiable et 2 flashbangs.' },
+  survivant: { label:'Survivant', speed:1.18, stamina:.9, grenades:1, desc:'Très rapide et discret, mais une seule flashbang.' }
 };
 function setCombatClass(value, resetCharges=true) {
   selectedClass = CLASS_CONFIG[value] ? value : 'assaut';
@@ -2216,7 +2244,7 @@ tRun.addEventListener('pointerdown', e => { e.stopPropagation(); touchRun = true
 let moving = false, running = false, lastFl = -1, lastStair = false;
 function stairNear() { for (const st of stairs) if (p.x > st.X0 - 1 && p.x < st.X1 + 1 && p.z > st.Z0 - 1 && p.z < st.Z1 + 2) return true; return false; }
 function updateVisibility() {
-  if (chapter === 3 || chapter === 4) { floorGroups.forEach(g => g.visible = false); return; }
+  if (chapter === 3 || chapter === 4 || chapter === 5) { floorGroups.forEach(g => g.visible = false); return; }
   const ns = !!stairAt(p.x, p.z), near = stairNear();
   floorGroups.forEach((g, f) => g.visible = f === p.fl || ((ns || near) && Math.abs(f - p.fl) <= 1));
 }
@@ -2228,7 +2256,7 @@ function update(dt) {
     delete $('obj').dataset.grace;
     showMsg("90 SECONDES ÉCOULÉES — LES CRÉATURES SONT MAINTENANT ACTIVES.", 4);
   }
-  if ((chapter===3 || chapter===4) && $('caseTime')) { const t=playTime|0; $('caseTime').textContent=(chapter===3?'21:24:':'02:17:')+String(t%60).padStart(2,'0'); }
+  if ((chapter===3 || chapter===4 || chapter===5) && $('caseTime')) { const t=playTime|0; $('caseTime').textContent=(chapter===3?'21:24:':chapter===4?'02:17:':'03:17:')+String(t%60).padStart(2,'0'); }
   edgeLook(dt); updateLockHint(); updateMedical(dt);
   ang += ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) * 2.2 * dt;
   let fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - joy.y;
@@ -4296,9 +4324,9 @@ setTimeout(() => {
     buildDressing();
     buildMedical();
     buildMonsterGrid();
-    buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives(); buildSubwaySet(); buildChapterDressing();
+    buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives(); buildSubwaySet(); buildChapterDressing(); buildCornfield();
     reset(); state = 'title';
-    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('chapter3Btn').disabled = false; $('chapter4Btn').disabled = false; $('mpBtn').disabled = false; setCombatClass($('classSelect').value);
+    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('chapter3Btn').disabled = false; $('chapter4Btn').disabled = false; $('chapter5Btn').disabled = false; $('mpBtn').disabled = false; setCombatClass($('classSelect').value);
   } catch (e) { console.error(e); $('startBtn').textContent = "Erreur de chargement"; }
   requestAnimationFrame(frame);
 }, 60);
