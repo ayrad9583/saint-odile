@@ -1880,7 +1880,7 @@ function flashbangImpact(x,z,f,fromNetwork=false,except=null) {
     showMsg('La créature est désorientée ! Profite-en pour t’échapper.',2.6);
   }
   for (const c of subwayCreatures) if (c.root.visible && Math.hypot(x-c.root.position.x,z-c.root.position.z)<7.5) c.stunT=Math.max(c.stunT||0,4.2);
-  if (NET.on && NET.host && !fromNetwork) netSend({t:'flashFx',x,z,f},except);
+  if (NET.on && NET.host) netSend({t:'flashFx',x,z,f},fromNetwork ? except : null);
   else if (NET.on && !NET.host && !fromNetwork) netSend({t:'flashImpact',x,z,f});
 }
 function updateFlashProjectiles(dt) {
@@ -3488,6 +3488,7 @@ function monNoise(r, x, z, fl) {
   }
 }
 function netMonHost(dt) {
+  if (monsterStunT > 0) { mon.speedNow=0; mon.danger=0; return; }
   const m = mon, C = m.cfg, list = netPlayers(), per = list.map(P => perceive(m, P));
   if (m.state === 'dormant') {
     m.lit = false; m.speedNow = 0; m.observed = false;
@@ -3877,7 +3878,7 @@ function netTick(dt, now) {
     if (state !== 'play' && state !== 'title' && state !== 'loading') netMonHost(dt);
     if (now - NET.tMon > 66) { NET.tMon = now; netSend({ t: 'mon', x: +mon.x.toFixed(2), z: +mon.z.toFixed(2), h: +mon.h.toFixed(2), y: +mon.yaw.toFixed(2), s: mon.state, sp: +mon.speedNow.toFixed(2), l: mon.lit ? 1 : 0, o: mon.observed ? 1 : 0 }); }
   }
-  if (!NET.host && NET.started && NET.monT && !(state === 'dying' && killer === mon)) {
+  if (!NET.host && NET.started && NET.monT && monsterStunT <= 0 && !(state === 'dying' && killer === mon)) {
     const T = NET.monT, k = 1 - Math.exp(-dt * 12);
     if (Math.hypot(T.x - mon.x, T.z - mon.z) > 6 || Math.abs(T.h - mon.h) > 2) { mon.x = T.x; mon.z = T.z; mon.h = T.h; }
     else { mon.x += (T.x - mon.x) * k; mon.z += (T.z - mon.z) * k; mon.h += (T.h - mon.h) * k; }
