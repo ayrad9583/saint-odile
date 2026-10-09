@@ -227,9 +227,9 @@ Flashbang · 2 [G]</div>
 
   <div class="screen" id="win" hidden>
     <div class="panel">
-      <div class="kicker">Sortie de secours · Façade est</div>
-      <h2>Tu es dehors.</h2>
-      <p class="lede">L'air froid de la nuit. Derrière toi, les néons de Sainte-Odile grésillent une dernière fois, étage par étage, puis s'éteignent.</p>
+      <div class="kicker" id="winKicker">Sortie de secours · Façade est</div>
+      <h2 id="winTitle">Tu es dehors.</h2>
+      <p class="lede" id="winLede">L'air froid de la nuit. Derrière toi, les néons de Sainte-Odile grésillent une dernière fois, étage par étage, puis s'éteignent.</p>
       <div class="stats"><div>Temps<b id="wTime">0:00</b></div><div>Notes<b id="wNotes">0/4</b></div></div>
       <button class="btn" id="againBtn" type="button">Rejouer</button>
     </div>
@@ -2714,6 +2714,13 @@ function win(fromNetwork = false) {
   if (growlGain) growlGain.gain.setTargetAtTime(0, AC.currentTime, .4);
   if (gurgleGain) gurgleGain.gain.setTargetAtTime(0, AC.currentTime, .4);
   $('wTime').textContent = fmt(playTime); $('wNotes').textContent = `${notesFound}/4`;
+  const cornfieldEnding = chapter === 5;
+  $('winKicker').textContent = cornfieldEnding ? 'CASSETTE 05 · SIGNAL PERDU' : 'Sortie de secours · Façade est';
+  $('winTitle').textContent = cornfieldEnding ? 'Tu n’es jamais sorti.' : 'Tu es dehors.';
+  $('winLede').textContent = cornfieldEnding
+    ? 'Tu atteins enfin la route et crois avoir échappé aux voix. Le sol cède sous tes pieds. La caméra tombe avec toi dans un couloir sans fin : moquette humide, murs jaunes, néons bourdonnants. La porte des champs a disparu. Sur la cassette, une dernière phrase grésille : « Niveau 0. Ne reste pas ici. » Le signal coupe. FIN ?'
+    : 'L’air froid de la nuit. Derrière toi, les néons de Sainte-Odile grésillent une dernière fois, étage par étage, puis s’éteignent.';
+  $('againBtn').textContent = cornfieldEnding ? 'Rejouer depuis le début' : (NET.on && NET.started ? 'Retourner aider' : 'Rejouer');
   if (document.pointerLockElement) { wasLocked = false; document.exitPointerLock(); }
   show('win');
 }
