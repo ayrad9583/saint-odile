@@ -161,7 +161,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
     <div class="panel">
       <div class="kicker">Hôpital Sainte-Odile · Fermé en 1987 · 3 niveaux</div>
       <h1>Sainte-<em>Odile</em></h1>
-      <p class="lede">Tu es entré par le hall d'accueil. Les portes se sont refermées derrière toi. Les trois fusibles du tableau électrique sont cachés dans l'hôpital, du sous-sol au premier étage. Remets le courant, puis trouve la sortie de secours. Tu n'es pas seul. Et si tu entends une civière rouler derrière toi, ne perds pas une seconde.</p>
+      <p class="lede" id="storyLede">Chapitre I — Tu es entré par le hall d'accueil. Les portes se sont refermées derrière toi. Les trois fusibles du tableau électrique sont cachés dans l'hôpital, du sous-sol au premier étage. Remets le courant, puis trouve la sortie de secours. Tu n'es pas seul. Et si tu entends une civière rouler derrière toi, ne perds pas une seconde.</p>
       <dl class="controls" id="ctrlDesk">
         <dt>Bouger</dt><dd><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou flèches</dd>
         <dt>Regarder</dt><dd>Souris (clic pour capturer)</dd>
@@ -177,6 +177,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
         <dt>Actions</dt><dd>Boutons Lampe et Courir</dd>
       </dl>
       <button class="btn" id="startBtn" type="button" disabled>Construction de l'hôpital…</button>
+      <button class="btn ghost" id="chapter2Btn" type="button" disabled>Chapitre II · Dernier métro</button>
       <button class="btn ghost" id="mpBtn" type="button" disabled>Multijoueur · salons (2 à 4 joueurs)</button>
       <p class="fine">Casque recommandé. Le son démarre au clic.</p>
     </div>
@@ -1278,6 +1279,54 @@ function buildWorld() {
   );
 }
 let mwalk;
+function buildSubwaySet() {
+  const addBox=(geo,mat,x,y,z,group=floorGroups[0])=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
+  const concrete=new THREE.MeshStandardMaterial({color:0x343936,roughness:.98});
+  const dark=new THREE.MeshStandardMaterial({color:0x111615,roughness:.85,metalness:.35});
+  const rust=new THREE.MeshStandardMaterial({color:0x57463a,roughness:.9,metalness:.25});
+  const tile=new THREE.MeshStandardMaterial({color:0x52615a,roughness:.96});
+  const glass=new THREE.MeshStandardMaterial({color:0x182b2a,roughness:.25,metalness:.5});
+  // Rails, traverses, tiled platform edges and an abandoned two-car train.
+  for(let x=1.2;x<27.5;x+=.72){
+    addBox(new THREE.BoxGeometry(.55,.07,2.4),dark,x,.04,9.8);
+  }
+  for(const z of [9.18,10.38]) addBox(new THREE.BoxGeometry(28,.12,.09),rust,14,.08,z);
+  for(const z of [7.95,11.45]){
+    addBox(new THREE.BoxGeometry(28,.22,.8),concrete,14,.03,z);
+    for(let x=1.5;x<27;x+=.62) addBox(new THREE.BoxGeometry(.5,.015,.72),tile,x,.15,z);
+    for(let x=1.5;x<27;x+=2.6){
+      addBox(new THREE.BoxGeometry(.055,.025,.72),new THREE.MeshStandardMaterial({color:0xb5a96e,roughness:.8}),x,.17,z);
+    }
+  }
+  for(const x of [4.4,10.8,17.2,23.6]){
+    addBox(new THREE.BoxGeometry(.2,2.65,.2),dark,x,1.3,7.55);
+    addBox(new THREE.BoxGeometry(.2,2.65,.2),dark,x,1.3,12.0);
+    addBox(new THREE.BoxGeometry(.28,.18,4.7),dark,x,2.55,9.8);
+    addBox(new THREE.BoxGeometry(.06,.16,.06),new THREE.MeshStandardMaterial({color:0xb52821,emissive:0x5a0805}),x,2.35,9.55);
+  }
+  // Métro immobilisé, portes fendues et fenêtres sales sur le côté du tunnel.
+  const train=new THREE.Group(); train.position.set(14,0,11.1); floorGroups[0].add(train);
+  addBox(new THREE.BoxGeometry(11.8,2.35,1.75),new THREE.MeshStandardMaterial({color:0x555d58,roughness:.82,metalness:.35}),0,1.35,0,train);
+  addBox(new THREE.BoxGeometry(11.5,.24,1.78),rust,0,.42,0,train);
+  for(let x=-4.8;x<=4.81;x+=1.2){
+    addBox(new THREE.BoxGeometry(.78,.66,.035),glass,x,1.62,.89,train);
+    addBox(new THREE.BoxGeometry(.075,1.2,.05),dark,x+.49,1.35,.92,train);
+  }
+  for(const x of [-2.9,0,2.9]){
+    addBox(new THREE.BoxGeometry(1.05,1.75,.07),dark,x,1.28,.94,train);
+    addBox(new THREE.BoxGeometry(.7,1.25,.03),glass,x,1.32,.99,train);
+  }
+  // Panneaux de sortie, afficheur cassé et câbles pendants.
+  addBox(new THREE.BoxGeometry(1.8,.55,.08),new THREE.MeshStandardMaterial({color:0x17221c,emissive:0x0c2819}),25.9,2.05,7.48);
+  addBox(new THREE.BoxGeometry(1.55,.03,.02),new THREE.MeshBasicMaterial({color:0x83dca0}),25.9,2.12,7.42);
+  for(let i=0;i<5;i++) addBox(new THREE.CylinderGeometry(.018,.018,.65+Math.random()*.45,5),dark,5+i*3.8,2.42,7.35);
+  // Two distinct silhouettes use the same detailed rig, with different scale and posture.
+  const a=buildCreatureInstance(811), b=buildCreatureInstance(947);
+  a.root.scale.set(1.28,1.12,1.28); b.root.scale.set(.78,.68,.78);
+  b.root.rotation.x=.22;
+  a.root.visible=false; b.root.visible=false; scene.add(a.root,b.root);
+  subwayCreatures=[{root:a.root,parts:a.P,phase:0},{root:b.root,parts:b.P,phase:1.7}];
+}
 function buildMonsterGrid() {
   mwalk = [0, 1, 2].map(f => {
     const g = G[f], w = new Uint8Array(GW * GH), open = (x, z) => x >= 0 && z >= 0 && x < GW && z < GH && g.cell[ix(x, z)] && !g.block[ix(x, z)];
@@ -1787,6 +1836,7 @@ const DIFF = {
 };
 
 function reset() {
+  for (const c of subwayCreatures) { c.root.visible = chapter === 2; c.phase = 0; }
   items.forEach(it => it.g.parent && it.g.parent.remove(it.g));
   items = itemDefs.map((d, i) => { const it = makeItem(d); it.id = i; return it; }); NET.myFuses = []; NET.pickReq = {};
   p.x = 11.2; p.z = 5.2; p.fl = 1; p.h = p.hs = FH;
@@ -1839,6 +1889,7 @@ function rayDist(f, ox, oz, a, max) { const rx = Math.cos(a), rz = Math.sin(a); 
 /* ================= HUD / screens ================= */
 function showMsg(t, dur = 3) { msgEl.textContent = t; msgEl.classList.add('on'); msgT = dur; }
 function objective() {
+  if (chapter === 2) return subwayGateOpen ? 'Objectif · franchir la sortie de service' : 'Objectif · trouver la commande de la porte de service au bout du quai';
   if (powered) return 'Objectif · la sortie de secours (rez-de-chaussée, bout du couloir est)';
   const tf = teamFuses();
   if (tf < 3) {
@@ -1879,8 +1930,28 @@ function resumeGame() {
 }
 document.addEventListener('pointerlockchange', () => { const locked = document.pointerLockElement === cv; if (!locked && wasLocked && state === 'play') pauseGame(); wasLocked = locked; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
-function startGame(opts) { const fromNet = opts === 'net'; try { initAudio(); } catch (e) {} reset(); state = 'play'; show(null); if (!fromNet) lock(); mouse.inside = false; showMsg("Les portes du hall sont condamnées. Trouve les trois fusibles.", 4.5); }
+let chapter = 1, subwayCreatures = [], subwayClock = 0, subwayGateOpen = false;
+function setChapter(n) {
+  chapter = n;
+  $('storyLede').textContent = n === 2
+    ? "Chapitre II — Dernier métro. Le courant de l'hôpital a réveillé quelque chose sous la ville. Descends sur les voies, évite les créatures et trouve la sortie de service avant le prochain train."
+    : "Chapitre I — Tu es entré par le hall d'accueil. Les portes se sont refermées derrière toi. Les trois fusibles du tableau électrique sont cachés dans l'hôpital, du sous-sol au premier étage. Remets le courant, puis trouve la sortie de secours. Tu n'es pas seul.";
+  $('startBtn').textContent = n === 2 ? "Commencer le chapitre II" : "Entrer dans l'hôpital";
+}
+function startGame(opts) {
+  const fromNet = opts === 'net';
+  if (fromNet) chapter = 1;
+  try { initAudio(); } catch (e) {}
+  reset(); state = 'play'; show(null); if (!fromNet) lock(); mouse.inside = false;
+  if (chapter === 2) {
+    p.x = 3.2; p.z = 9.7; p.fl = 0; p.h = p.hs = 0;
+    mon.x = 24.5; mon.z = 9.6; mon.h = 0; mon.f = 0; mon.state = 'stalk'; mon.speedNow = .2;
+    subwayClock = 0; subwayGateOpen = false;
+    showMsg("MÉTRO — Suis les panneaux de sortie. Quelque chose rampe sur les voies.", 5);
+  } else showMsg("Les portes du hall sont condamnées. Trouve les trois fusibles.", 4.5);
+}
 $('startBtn').onclick = () => { if (NET.on) netLeave(); startGame(); };
+$('chapter2Btn').onclick = () => { if (NET.on) netLeave(); setChapter(2); startGame(); };
 $('retryBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
 $('againBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
 $('resumeBtn').onclick = resumeGame;
@@ -2013,7 +2084,30 @@ function update(dt) {
   for (const t of triggers) if (!t.done && t.f === p.fl && Math.hypot(t.x - p.x, t.z - p.z) < t.r) { t.done = true; t.fn(); }
   ambientT -= dt;
   if (ambientT <= 0) { ambientT = 16 + Math.random() * 22; const r = Math.random(), pan = Math.random() * 2 - 1; if (r < .35) sfxBang(.16 + Math.random() * .2, pan); else if (r < .7) sfxWhisper(.18, pan); else flicker(.7); }
-  if (p.fl === 1 && p.x > 26.7 && p.z > 3.0 && p.z < 4.6) { if (powered) { win(); return; } if (lockMsgT <= 0) { showMsg(`La porte de secours ne s'ouvre pas sans courant (fusibles en place : ${installed}/3).`, 3); lockMsgT = 5; } }
+  if (chapter === 2) {
+    subwayClock += dt;
+    // La commande est sur le mur du fond; l'interaction se fait à courte portée.
+    if (!subwayGateOpen && p.fl === 0 && p.x > 24.3 && p.z > 8.1 && p.z < 11.5) {
+      subwayGateOpen = true; sfxClunk(); flicker(1.2); showMsg("La grille s'ouvre lentement. COURS !", 3.2);
+    }
+    if (subwayGateOpen && p.fl === 0 && p.x > 27.0 && p.z > 8.0 && p.z < 11.7) { win(); return; }
+    // Le rôdeur des rails et le rampant suivent le joueur dans le tunnel.
+    for (let i=0;i<subwayCreatures.length;i++) {
+      const c=subwayCreatures[i]; if (!c.root.visible) continue;
+      const dx=p.x-c.root.position.x, dz=p.z-c.root.position.z, d=Math.hypot(dx,dz);
+      const delay=i===0?0:2.8;
+      if (subwayClock>delay && d>.85 && p.fl===0) {
+        const speed=i===0?1.05:1.35, step=Math.min(d-.65,speed*dt);
+        c.root.position.x += dx/(d||1)*step; c.root.position.z += dz/(d||1)*step;
+        c.root.rotation.y=Math.atan2(dx,dz);
+      }
+      c.phase+=dt*(d<5?5.5:2.2);
+      poseCreature(c.parts,d<2.6?'charge':'stalk',{ph:c.phase,sw:d<8?.8:.25,d,pan:0},dt,performance.now());
+      c.parts.eyeMat.emissiveIntensity=d<5?.75:.12;
+      if (d<.82 && p.fl===0) { die(mon); return; }
+    }
+  }
+  if (chapter !== 2 && p.fl === 1 && p.x > 26.7 && p.z > 3.0 && p.z < 4.6) { if (powered) { win(); return; } if (lockMsgT <= 0) { showMsg(`La porte de secours ne s'ouvre pas sans courant (fusibles en place : ${installed}/3).`, 3); lockMsgT = 5; } }
   if (lockMsgT > 0) lockMsgT -= dt;
   updateMonster(dt);
   if (state === 'play') { director(dt); ambience(dt); }
@@ -3464,19 +3558,43 @@ function nameSprite(txt) {
   sp.scale.set(1.1, .28, 1); sp.position.y = 1.95; return sp;
 }
 function makeAvatar(name, color) {
+  // Silhouette humaine plus crédible : veste, épaules, bras articulés, pantalon,
+  // bottes, sac et lampe frontale plutôt que des cylindres sans détails.
   const g = new THREE.Group();
-  const mat = new THREE.MeshLambertMaterial({ color });
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(.2, .23, 1.0, 10), mat); body.position.y = .95; g.add(body);
-  const legs = new THREE.Mesh(new THREE.CylinderGeometry(.17, .14, .5, 8), new THREE.MeshLambertMaterial({ color: 0x20262b })); legs.position.y = .27; g.add(legs);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.15, 12, 10), new THREE.MeshLambertMaterial({ color: 0xd2b49c })); head.position.y = 1.62; g.add(head);
-  const pivot = new THREE.Group(); pivot.position.y = 1.4; g.add(pivot);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff0c0 })); bulb.position.set(.2, 0, .2); pivot.add(bulb);
-  const bg = new THREE.ConeGeometry(.95, 7, 14, 1, true); bg.translate(0, -3.5, 0); bg.rotateX(-Math.PI / 2);
-  const beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ color: 0xfff0c8, transparent: true, opacity: .07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  beam.position.set(.2, 0, .2); pivot.add(beam);
-  g.add(nameSprite(name));
-  scene.add(g);
-  return { g, body, pivot, bulb, beam };
+  const fabric = new THREE.MeshStandardMaterial({ color, roughness: .94 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x202522, roughness: .98 });
+  const seams = new THREE.MeshStandardMaterial({ color: 0x555b50, roughness: .9 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xb99a82, roughness: .86 });
+  const add = (geo, mat, x, y, z, sx=1, sy=1, sz=1) => {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.scale.set(sx,sy,sz);
+    m.castShadow = true; m.receiveShadow = true; g.add(m); return m;
+  };
+  const body = add(new THREE.CapsuleGeometry(.22,.52,5,9), fabric, 0,1.05,0,1,.95,.72);
+  add(new THREE.BoxGeometry(.39,.16,.23), seams, 0,1.38,0);
+  add(new THREE.BoxGeometry(.3,.38,.18), dark, 0,1.02,-.17); // sac à dos
+  const legs = new THREE.Group(); legs.position.y=.55; g.add(legs);
+  for (const x of [-.115,.115]) {
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(.085,.3,4,7),dark); thigh.position.set(x,-.13,0); thigh.castShadow=true; legs.add(thigh);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(.13,.12,.23),dark); boot.position.set(x,-.39,.045); boot.castShadow=true; legs.add(boot);
+  }
+  const arms=[];
+  for (const side of [-1,1]) {
+    const arm=new THREE.Group(); arm.position.set(side*.25,1.29,0); g.add(arm);
+    const sleeve=new THREE.Mesh(new THREE.CapsuleGeometry(.07,.34,4,7),fabric); sleeve.position.y=-.19; sleeve.rotation.z=side*-.12; sleeve.castShadow=true; arm.add(sleeve);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(.065,10,8),skin); hand.position.set(side*-.015,-.41,.025); arm.add(hand); arms.push(arm);
+  }
+  const neck=add(new THREE.CylinderGeometry(.055,.065,.12,10),skin,0,1.46,0);
+  const head=add(new THREE.SphereGeometry(.145,18,14),skin,0,1.62,.015, .92,1.08,.94);
+  add(new THREE.SphereGeometry(.153,16,10,0,Math.PI*2,0,Math.PI*.42),dark,0,1.68,-.005,1.02,.72,1.02); // cheveux/couvre-chef
+  add(new THREE.BoxGeometry(.31,.035,.23),dark,0,1.73,.02); // bord de casquette
+  const pivot = new THREE.Group(); pivot.position.y = 1.43; g.add(pivot);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(.035,10,8), new THREE.MeshStandardMaterial({color:0xfff0c0,emissive:0xffd58a,emissiveIntensity:1.4}));
+  bulb.position.set(.04,.17,.13); pivot.add(bulb);
+  const bg = new THREE.ConeGeometry(.82, 6.5, 18, 1, true); bg.translate(0,-3.25,0); bg.rotateX(-Math.PI/2);
+  const beam = new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:0xfff0c8,transparent:true,opacity:.055,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  beam.position.set(.04,.17,.13); pivot.add(beam);
+  g.add(nameSprite(name)); scene.add(g);
+  return { g, body, legs, arms, head, pivot, bulb, beam };
 }
 function removePlayer(id) {
   const r = NET.pl[id]; if (!r) return;
@@ -3942,9 +4060,9 @@ setTimeout(() => {
     buildDressing();
     buildMedical();
     buildMonsterGrid();
-    buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives();
+    buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives(); buildSubwaySet();
     reset(); state = 'title';
-    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('mpBtn').disabled = false;
+    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('mpBtn').disabled = false;
   } catch (e) { console.error(e); $('startBtn').textContent = "Erreur de chargement"; }
   requestAnimationFrame(frame);
 }, 60);
