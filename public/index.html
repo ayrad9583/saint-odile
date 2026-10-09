@@ -1280,7 +1280,8 @@ function buildWorld() {
 }
 let mwalk;
 function buildSubwaySet() {
-  const addBox=(geo,mat,x,y,z,group=floorGroups[0])=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
+  subwayRoot = new THREE.Group(); subwayRoot.visible = false; floorGroups[0].add(subwayRoot);
+  const addBox=(geo,mat,x,y,z,group=subwayRoot)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
   const concrete=new THREE.MeshStandardMaterial({color:0x343936,roughness:.98});
   const dark=new THREE.MeshStandardMaterial({color:0x111615,roughness:.85,metalness:.35});
   const rust=new THREE.MeshStandardMaterial({color:0x57463a,roughness:.9,metalness:.25});
@@ -1305,7 +1306,7 @@ function buildSubwaySet() {
     addBox(new THREE.BoxGeometry(.06,.16,.06),new THREE.MeshStandardMaterial({color:0xb52821,emissive:0x5a0805}),x,2.35,9.55);
   }
   // Métro immobilisé, portes fendues et fenêtres sales sur le côté du tunnel.
-  const train=new THREE.Group(); train.position.set(14,0,11.1); floorGroups[0].add(train);
+  const train=new THREE.Group(); train.position.set(14,0,11.1); subwayRoot.add(train);
   addBox(new THREE.BoxGeometry(11.8,2.35,1.75),new THREE.MeshStandardMaterial({color:0x555d58,roughness:.82,metalness:.35}),0,1.35,0,train);
   addBox(new THREE.BoxGeometry(11.5,.24,1.78),rust,0,.42,0,train);
   for(let x=-4.8;x<=4.81;x+=1.2){
@@ -1324,7 +1325,7 @@ function buildSubwaySet() {
   const a=buildCreatureInstance(811), b=buildCreatureInstance(947);
   a.root.scale.set(1.28,1.12,1.28); b.root.scale.set(.78,.68,.78);
   b.root.rotation.x=.22;
-  a.root.visible=false; b.root.visible=false; scene.add(a.root,b.root);
+  a.root.visible=false; b.root.visible=false; a.root.position.set(20.5,0,9.6); b.root.position.set(25.3,0,9.7); scene.add(a.root,b.root);
   subwayCreatures=[{root:a.root,parts:a.P,phase:0},{root:b.root,parts:b.P,phase:1.7}];
 }
 function buildMonsterGrid() {
@@ -1836,6 +1837,7 @@ const DIFF = {
 };
 
 function reset() {
+  if (subwayRoot) subwayRoot.visible = chapter === 2;
   for (const c of subwayCreatures) { c.root.visible = chapter === 2; c.phase = 0; }
   items.forEach(it => it.g.parent && it.g.parent.remove(it.g));
   items = itemDefs.map((d, i) => { const it = makeItem(d); it.id = i; return it; }); NET.myFuses = []; NET.pickReq = {};
@@ -1930,7 +1932,7 @@ function resumeGame() {
 }
 document.addEventListener('pointerlockchange', () => { const locked = document.pointerLockElement === cv; if (!locked && wasLocked && state === 'play') pauseGame(); wasLocked = locked; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
-let chapter = 1, subwayCreatures = [], subwayClock = 0, subwayGateOpen = false;
+let chapter = 1, subwayCreatures = [], subwayClock = 0, subwayGateOpen = false, subwayRoot = null;
 function setChapter(n) {
   chapter = n;
   $('storyLede').textContent = n === 2
