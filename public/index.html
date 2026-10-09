@@ -184,6 +184,8 @@ Flashbang · 2 [G]</div>
       <label id="classPicker">Classe de combat<select id="classSelect"><option value="assaut">Assaut — polyvalent</option><option value="medecin">Médecin — endurance</option><option value="eclaireur">Éclaireur — rapide, 3 flashbangs</option><option value="soutien">Soutien — souffle renforcé</option></select><span id="classDesc">Équilibré : vitesse et endurance standard, 2 flashbangs.</span></label>
       <button class="btn" id="startBtn" type="button" disabled>Construction de l'hôpital…</button>
       <button class="btn ghost" id="chapter2Btn" type="button" disabled>Chapitre II · Dernier métro</button>
+      <button class="btn ghost" id="chapter3Btn" type="button" disabled>Chapitre III · Maple Court</button>
+      <button class="btn ghost" id="chapter4Btn" type="button" disabled>Chapitre IV · Alerte rouge</button>
       <button class="btn ghost" id="mpBtn" type="button" disabled>Multijoueur · salons (2 à 4 joueurs)</button>
       <p class="fine">Casque recommandé. Le son démarre au clic.</p>
     </div>
@@ -1286,6 +1288,67 @@ function buildWorld() {
   );
 }
 let mwalk;
+function buildChapterDressing() {
+  const box=(root,geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;m.receiveShadow=true;root.add(m);return m;};
+  const mat=(color,roughness=.8,metalness=0,emissive=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness,emissive});
+  const wall=mat(0x77776c,.95), door=mat(0x332f2b,.82), trim=mat(0x171b1a,.55,.25), metal=mat(0x4a514e,.4,.7), paper=mat(0xb8b19a,.95), red=mat(0x5a1112,.55,.1,0x260000), screen=mat(0x7bb5a1,.28,.2,0x183d30);
+  const sign=(root,label,x,y,z,w=1.2,h=.34,color='#d7d2bd')=>{
+    const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.fillStyle='#171b1a';g.fillRect(0,0,512,128);g.strokeStyle='#777d72';g.lineWidth=5;g.strokeRect(5,5,502,118);g.fillStyle=color;g.font='bold 36px monospace';g.textAlign='center';g.textBaseline='middle';g.fillText(label,256,64);
+    const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide}));m.position.set(x,y,z);root.add(m);return m;
+  };
+  apartmentRoot=new THREE.Group();scene.add(apartmentRoot);apartmentRoot.visible=false;
+  // Apartment corridor dressing: numbered doors, deadbolts, mailboxes, CCTV and neglected household objects.
+  for(let i=0;i<6;i++){
+    const x=3.8+i*3.75;
+    for(const z of [7.85,11.75]){
+      box(apartmentRoot,new THREE.BoxGeometry(1.15,2.15,.12),door,x,1.08,z,0,z>10?Math.PI:0);
+      box(apartmentRoot,new THREE.BoxGeometry(1.25,.09,.16),trim,x,2.18,z);
+      box(apartmentRoot,new THREE.BoxGeometry(.08,.36,.07),metal,x+.43,1.1,z+(z>10?-.09:.09));
+      box(apartmentRoot,new THREE.BoxGeometry(.22,.13,.025),paper,x-.32,1.68,z+(z>10?-.09:.09));
+      sign(apartmentRoot,String(301+i),x-.32,1.68,z+(z>10?-.11:.11),.18,.1,'#28231e');
+    }
+    box(apartmentRoot,new THREE.BoxGeometry(.12,.16,.12),mat(0xaba18b,.35),x,2.48,8.65);
+    box(apartmentRoot,new THREE.SphereGeometry(.035,8,6),mat(0xffd5a0,.25,0,.8),x,2.43,8.65);
+  }
+  for(let i=0;i<10;i++){const x=5+i*1.8;box(apartmentRoot,new THREE.BoxGeometry(.68,.55,.22),metal,x,.85,7.55);box(apartmentRoot,new THREE.BoxGeometry(.12,.08,.03),paper,x,.86,7.42);}
+  // Loose furniture and debris in the open rooms add scale and contact shadows.
+  for(const [x,z] of [[5.5,4.2],[12.2,4.1],[19.8,4.3],[9.5,15.2],[18.4,15.5]]){
+    box(apartmentRoot,new THREE.BoxGeometry(1.3,.22,.55),mat(0x39332d),x,.34,z);
+    for(const dx of [-.52,.52])box(apartmentRoot,new THREE.BoxGeometry(.06,.35,.06),trim,x+dx,.17,z);
+    box(apartmentRoot,new THREE.BoxGeometry(.7,.42,.4),mat(0x77776b),x,.67,z);
+  }
+  for(const x of [6.2,15.8,24.2]){
+    box(apartmentRoot,new THREE.BoxGeometry(.25,.15,.2),trim,x,2.42,7.42);
+    box(apartmentRoot,new THREE.SphereGeometry(.06,8,6),mat(0x181c1a,.4,0,.4),x,2.4,7.3);
+  }
+  sign(apartmentRoot,'MAPLE COURT · 3C',14,2.35,7.35,2.6,.4);
+  sign(apartmentRoot,'POLICE · NE PAS ENTRER',23.5,2.2,7.35,2.2,.32,'#c7a4a0');
+  // Police archive/control room for chapter IV: CRTs, file cabinets, desks and emergency warning beacons.
+  policeRoot=new THREE.Group();scene.add(policeRoot);policeRoot.visible=false;
+  for(const x of [4.6,10.8,17.0,23.2]){
+    box(policeRoot,new THREE.BoxGeometry(1.7,.12,.8),mat(0x282d2b,.6,.25),x,.78,7.55);
+    for(const dx of [-.62,.62])box(policeRoot,new THREE.BoxGeometry(.08,.72,.08),trim,x+dx,.36,7.55);
+    for(const dx of [-.42,.42]){
+      box(policeRoot,new THREE.BoxGeometry(.62,.48,.12),trim,x+dx,1.12,7.72);
+      box(policeRoot,new THREE.PlaneGeometry(.53,.36),screen,x+dx,1.13,7.645,0,0,0);
+    }
+    box(policeRoot,new THREE.BoxGeometry(.3,.04,.25),metal,x,.9,7.15);
+    box(policeRoot,new THREE.BoxGeometry(.75,.06,.55),mat(0x5b5144),x,1.02,11.85);
+    for(let j=0;j<3;j++)box(policeRoot,new THREE.BoxGeometry(.68,.035,.48),paper,x,1.07+j*.04,11.85);
+  }
+  for(let i=0;i<7;i++){
+    const x=4+i*3.1;
+    box(policeRoot,new THREE.BoxGeometry(.72,1.6,.55),trim,x, .82,14.8);
+    for(let j=0;j<4;j++)box(policeRoot,new THREE.BoxGeometry(.6,.018,.02),metal,x,.35+j*.32,14.5);
+  }
+  for(const x of [7,14,21]){
+    box(policeRoot,new THREE.BoxGeometry(.5,.18,.05),red,x,2.35,8.0);
+    box(policeRoot,new THREE.SphereGeometry(.09,8,6),mat(0xff2424,.25,0,.8),x,2.34,7.95);
+  }
+  sign(policeRoot,'INCIDENT 04-1128 · MAPLE COURT',14,2.35,7.34,3.5,.42,'#d5b7b2');
+  sign(policeRoot,'EVACUATION ORDER · DO NOT GATHER',23.3,2.1,7.34,3.2,.32,'#d7b8b1');
+}
 function buildSubwaySet() {
   subwayRoot = new THREE.Group(); subwayRoot.visible = false; floorGroups[0].add(subwayRoot);
   const addBox=(geo,mat,x,y,z,group=subwayRoot)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;};
@@ -1906,7 +1969,9 @@ const DIFF = {
 
 function reset() {
   if (subwayRoot) subwayRoot.visible = chapter === 2;
-  for (const c of subwayCreatures) { c.root.visible = chapter === 2; c.phase = 0; }
+  if (apartmentRoot) apartmentRoot.visible = chapter === 3;
+  if (policeRoot) policeRoot.visible = chapter === 4;
+  subwayCreatures.forEach((c,i)=>{ c.root.visible = chapter===2 || (chapter===3&&i===0) || (chapter===4&&i===1); c.phase=0; c.stunT=0; });
   items.forEach(it => it.g.parent && it.g.parent.remove(it.g));
   items = itemDefs.map((d, i) => { const it = makeItem(d); it.id = i; return it; }); NET.myFuses = []; NET.pickReq = {};
   p.x = 11.2; p.z = 5.2; p.fl = 1; p.h = p.hs = FH;
@@ -1962,6 +2027,8 @@ function rayDist(f, ox, oz, a, max) { const rx = Math.cos(a), rz = Math.sin(a); 
 function showMsg(t, dur = 3) { msgEl.textContent = t; msgEl.classList.add('on'); msgT = dur; }
 function objective() {
   if (chapter === 2) return subwayGateOpen ? 'Objectif · franchir la sortie de service' : 'Objectif · trouver la commande de la porte de service au bout du quai';
+  if (chapter === 3) return 'Objectif · preuves de Maple Court ('+chapterEvidence+'/3) — puis rejoindre la sortie de secours';
+  if (chapter === 4) return 'Objectif · cassettes de surveillance ('+chapterEvidence+'/3) — évacuer par la sortie est';
   if (powered) return 'Objectif · la sortie de secours (rez-de-chaussée, bout du couloir est)';
   const tf = teamFuses();
   if (tf < 3) {
@@ -2003,12 +2070,21 @@ function resumeGame() {
 document.addEventListener('pointerlockchange', () => { const locked = document.pointerLockElement === cv; if (!locked && wasLocked && state === 'play') pauseGame(); wasLocked = locked; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 let chapter = 1, subwayCreatures = [], subwayClock = 0, subwayGateOpen = false, subwayRoot = null;
+let apartmentRoot = null, policeRoot = null, chapterEvidence = 0, evidenceMarks = [];
+const CHAPTER_NAMES = ['I · Hôpital','II · Métro','III · Maple Court','IV · Alerte rouge'];
 function setChapter(n) {
-  chapter = n;
-  $('storyLede').textContent = n === 2
-    ? "Chapitre II — Dernier métro. Le courant de l'hôpital a réveillé quelque chose sous la ville. Descends sur les voies, évite les créatures et trouve la sortie de service avant le prochain train."
-    : "Chapitre I — Tu es entré par le hall d'accueil. Les portes se sont refermées derrière toi. Les trois fusibles du tableau électrique sont cachés dans l'hôpital, du sous-sol au premier étage. Remets le courant, puis trouve la sortie de secours. Tu n'es pas seul.";
-  $('startBtn').textContent = n === 2 ? "Commencer le chapitre II" : "Entrer dans l'hôpital";
+  chapter = Math.max(1,Math.min(4,Number(n)||1));
+  $('storyLede').textContent = ({
+    1:"Chapitre I — Tu es entré par le hall d'accueil. Les portes se sont refermées derrière toi. Retrouve les trois fusibles, remets le courant et cherche la sortie. Tu n'es pas seul.",
+    2:"Chapitre II — Dernier métro. Une rame abandonnée bloque le tunnel. Traverse le quai, évite les silhouettes sur les rails et atteins la sortie de service.",
+    3:"Chapitre III — Maple Court, 28 novembre 2004. Une intervention policière a été interrompue dans l'appartement 3C. Retrouve trois preuves, puis rejoins l'escalier de secours. Quelqu'un imite les voix des résidents.",
+    4:"Chapitre IV — Alerte rouge. Les archives de police montrent que plusieurs immeubles ont été ciblés. Récupère trois cassettes de surveillance et évacue avant que l'alerte ne soit coupée."
+  })[chapter];
+  $('startBtn').textContent = chapter === 1 ? "Entrer dans l'hôpital" : "Commencer le chapitre " + ['I','II','III','IV'][chapter-1];
+  if (subwayRoot) subwayRoot.visible = chapter === 2;
+  if (apartmentRoot) apartmentRoot.visible = chapter === 3;
+  if (policeRoot) policeRoot.visible = chapter === 4;
+  subwayCreatures.forEach((c,i)=>{ c.root.visible = chapter===2 || (chapter===3 && i===0) || (chapter===4 && i===1); });
 }
 function startGame(opts) {
   const fromNet = opts === 'net';
@@ -2018,11 +2094,21 @@ function startGame(opts) {
     p.x = 3.2; p.z = 9.7; p.fl = 0; p.h = p.hs = 0;
     mon.x = 24.5; mon.z = 9.6; mon.h = 0; mon.f = 0; mon.state = 'stalk'; mon.speedNow = .2;
     subwayClock = 0; subwayGateOpen = false;
+    subwayCreatures.forEach((c,i)=>{c.root.position.set(i===0?20.5:25.3,0,9.7);c.root.visible=true;});
     showMsg("MÉTRO — Suis les panneaux de sortie. Quelque chose rampe sur les voies.", 5);
+  } else if (chapter === 3 || chapter === 4) {
+    p.x=3.2; p.z=9.7; p.fl=0; p.h=p.hs=0;
+    mon.x=chapter===3?22.5:25.0; mon.z=9.6; mon.h=0; mon.f=0; mon.state='stalk'; mon.speedNow=.2;
+    subwayClock=0; chapterEvidence=0;
+    evidenceMarks=(chapter===3?[7.5,14.2,20.8]:[6.5,13.8,21.2]).map(x=>({x,done:false}));
+    subwayCreatures.forEach((c,i)=>{c.root.position.set(chapter===3?22.5+i*2:19.5+i*3,0,9.7);c.root.visible=(chapter===3&&i===0)||(chapter===4&&i===1);c.stunT=0;});
+    showMsg(chapter===3?"MAPLE COURT — Appartement 3C. Les enregistrements ne correspondent pas aux voix que tu entends.":"ALERTE ROUGE — Récupère les trois cassettes. Ne fais confiance à aucune voix à la radio.",5);
   } else showMsg("Les portes du hall sont condamnées. Trouve les trois fusibles.", 4.5);
 }
-$('startBtn').onclick = () => { if (NET.on) netLeave(); setChapter(1); startGame(); };
+$('startBtn').onclick = () => { if (NET.on) netLeave(); setChapter(chapter); startGame(); };
 $('chapter2Btn').onclick = () => { if (NET.on) netLeave(); setChapter(2); startGame(); };
+$('chapter3Btn').onclick = () => { if (NET.on) netLeave(); setChapter(3); startGame(); };
+$('chapter4Btn').onclick = () => { if (NET.on) netLeave(); setChapter(4); startGame(); };
 $('retryBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
 $('againBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
 $('resumeBtn').onclick = resumeGame;
@@ -2156,6 +2242,26 @@ function update(dt) {
   for (const t of triggers) if (!t.done && t.f === p.fl && Math.hypot(t.x - p.x, t.z - p.z) < t.r) { t.done = true; t.fn(); }
   ambientT -= dt;
   if (ambientT <= 0) { ambientT = 16 + Math.random() * 22; const r = Math.random(), pan = Math.random() * 2 - 1; if (r < .35) sfxBang(.16 + Math.random() * .2, pan); else if (r < .7) sfxWhisper(.18, pan); else flicker(.7); }
+  if (chapter === 3 || chapter === 4) {
+    subwayClock += dt;
+    for (const mark of evidenceMarks) if (!mark.done && p.fl===0 && Math.abs(p.x-mark.x)<1.05 && p.z>7.3 && p.z<12.4) {
+      mark.done=true; chapterEvidence++; sfxPickup(); flicker(.22);
+      const found = chapter===3 ? ['Registre de patrouille récupéré.','Enregistrement audio récupéré : la voix vient de l’appartement vide.','Clé de service récupérée.'] : ['Cassette 01 récupérée.','Cassette 02 récupérée : plusieurs caméras montrent le même visage.','Cassette 03 récupérée.'];
+      showMsg(found[Math.min(chapterEvidence-1,2)],3.2); updateHud();
+    }
+    const targetCreature = subwayCreatures[chapter===3?0:1];
+    if (targetCreature && targetCreature.root.visible && !targetCreature.stunT) {
+      const dx=p.x-targetCreature.root.position.x,dz=p.z-targetCreature.root.position.z,d=Math.hypot(dx,dz);
+      if (d>1.0 && p.fl===0) { const speed=chapter===3?1.08:.82,step=Math.min(d-.78,speed*dt);targetCreature.root.position.x+=dx/(d||1)*step;targetCreature.root.position.z+=dz/(d||1)*step;targetCreature.root.rotation.y=Math.atan2(dx,dz); }
+      targetCreature.phase+=dt*(d<5?5:2);poseCreature(targetCreature.parts,d<2.8?'charge':'stalk',{ph:targetCreature.phase,sw:d<8?.75:.22,d,pan:0},dt,performance.now());
+      targetCreature.parts.eyeMat.emissiveIntensity=d<5?.7:.1;
+      if(d<.82) { die(mon); return; }
+    }
+    if (p.fl===0 && p.x>26.7 && p.z>7.6 && p.z<12.2) {
+      if (chapterEvidence>=3) { win(); return; }
+      if (lockMsgT<=0) { showMsg(chapter===3?'La porte de Maple Court est verrouillée. Il manque des preuves.':'Évacuation bloquée : les trois cassettes sont nécessaires.',2.8);lockMsgT=4; }
+    }
+  }
   if (chapter === 2) {
     subwayClock += dt;
     // La commande est sur le mur du fond; l'interaction se fait à courte portée.
@@ -4056,7 +4162,7 @@ function mpRenderLobby() {
   if (NET.on) $('mpRoomInfo').textContent = `${NET.roomName || 'Salon'} · ${ids.length}/${NET.max} joueurs · ${chapter === 2 ? 'Chapitre II · Métro' : 'Chapitre I · Hôpital'}${NET.pw ? ' · protégé par mot de passe' : ''}${NET.started ? ' · partie en cours' : ''}`;
   const guests = ids.filter(i => i !== 'h'), nr = guests.filter(i => NET.ready[i]).length;
   $('mpChapterBtn').hidden = !(NET.on && NET.host && !NET.started);
-  $('mpChapterBtn').textContent = chapter === 2 ? 'Chapitre sélectionné : II · Métro (cliquer pour I)' : 'Chapitre sélectionné : I · Hôpital (cliquer pour II)';
+  $('mpChapterBtn').textContent = 'Chapitre sélectionné : '+CHAPTER_NAMES[chapter-1]+' (cliquer pour changer)';
   $('mpStartBtn').hidden = !(NET.on && NET.host && !NET.started);
   $('mpStartBtn').textContent = guests.length ? `Lancer la partie (${nr}/${guests.length} prêts)` : 'Lancer la partie (seul)';
   $('mpReadyBtn').hidden = !(NET.on && !NET.host && !NET.started);
@@ -4089,7 +4195,7 @@ function mpNameVal() { const v = ($('mpName').value || '').trim().slice(0, 14) |
   });
   const startAll = () => { if (!(NET.on && NET.host)) return; NET.started = true; netSend({t:'start', chapter}); mpWsSend({type:'start-room', roomId:NET.room}); startGame(); };
   $('mpStartBtn').onclick = startAll;
-  $('mpChapterBtn').onclick = () => { if (!(NET.on && NET.host && !NET.started)) return; setChapter(chapter === 1 ? 2 : 1); NET.ready = {}; netLobbyBroadcast(); mpStatus(chapter === 2 ? 'Le chapitre II est sélectionné pour tous les joueurs.' : 'Le chapitre I est sélectionné pour tous les joueurs.'); };
+  $('mpChapterBtn').onclick = () => { if (!(NET.on && NET.host && !NET.started)) return; setChapter(chapter >= 4 ? 1 : chapter+1); NET.ready = {}; netLobbyBroadcast(); mpStatus('Chapitre sélectionné pour tous les joueurs : '+CHAPTER_NAMES[chapter-1]+'.'); };
   $('mpResetBtn').onclick = startAll;
   addEventListener('pagehide', () => { if (NET.on) { try { netLeave(); } catch (_) {} } });
   setInterval(() => { if (MP_SIGNAL.ws && MP_SIGNAL.ws.readyState === WebSocket.OPEN && !$('mp').hidden && $('mpMenu') && !$('mpMenu').hidden) mpWsSend({type:'list'}); }, 5000);
@@ -4144,9 +4250,9 @@ setTimeout(() => {
     buildDressing();
     buildMedical();
     buildMonsterGrid();
-    buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives(); buildSubwaySet();
+    buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives(); buildSubwaySet(); buildChapterDressing();
     reset(); state = 'title';
-    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('mpBtn').disabled = false; setCombatClass($('classSelect').value);
+    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('chapter3Btn').disabled = false; $('chapter4Btn').disabled = false; $('mpBtn').disabled = false; setCombatClass($('classSelect').value);
   } catch (e) { console.error(e); $('startBtn').textContent = "Erreur de chargement"; }
   requestAnimationFrame(frame);
 }, 60);
