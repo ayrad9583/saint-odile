@@ -2318,7 +2318,6 @@ function update(dt) {
   if (lockMsgT > 0) lockMsgT -= dt;
   if (playTime >= 90) {
     updateMonster(dt);
-    if (state === 'play') updatePatient(dt);
     if (state === 'play') { director(dt); ambience(dt); }
   } else {
     // Période de sécurité : aucun ennemi ne peut lancer de poursuite ni infliger de dégâts.
