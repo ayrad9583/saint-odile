@@ -1,0 +1,26 @@
+SAINTE-ODILE — MULTIJOUEUR SANS CODE D’INVITATION
+
+FICHIERS
+- public/index.html : le jeu modifié
+- server.js : serveur des salons publics et signalisation WebRTC
+- package.json : dépendance WebSocket
+- render.yaml : configuration de déploiement Render
+
+MISE EN LIGNE GRATUITE (à faire une seule fois)
+1. Décompresse le ZIP sur ton ordinateur.
+2. Crée un dépôt GitHub et téléverse les éléments contenus dans le dossier « Sainte-Odile-Multijoueur-Internet » à la racine du dépôt (le fichier render.yaml doit être à la racine).
+3. Sur Render, crée un nouveau service depuis ce dépôt GitHub.
+4. Choisis un service Web Node. Commandes : Build « npm install », Start « npm start ». Le fichier render.yaml peut préremplir ces réglages.
+5. Choisis le plan gratuit et déploie le service.
+6. Ouvre l’adresse HTTPS fournie par Render. Toi et ton ami devez ouvrir cette même adresse pour jouer.
+
+EN JEU
+1. Hôte : Multijoueur → Créer le salon.
+2. Ami : ouvre la même adresse web → Salons ouverts → Rejoindre.
+3. Hôte : clique sur Lancer la partie.
+Aucun code d’invitation ou d’activation n’est demandé pendant le jeu.
+
+À SAVOIR
+- Le fichier ouvert directement depuis l’ordinateur (file://) ne peut pas publier de salons sur Internet : utilise l’adresse HTTPS hébergée.
+- Le plan gratuit peut mettre le service en veille après une période d’inactivité.
+- Le code HTML et le serveur ont passé une vérification de syntaxe. La connexion réelle entre deux appareils n’a pas pu être testée ici. STUN ne suffit pas à traverser tous les réseaux ; certains peuvent nécessiter un serveur TURN.
