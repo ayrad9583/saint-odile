@@ -424,7 +424,8 @@ const cv = $('cv');
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' }); }
 catch (e) { $('err').hidden = false; $('title').hidden = true; return; }
-const PR = Math.min(devicePixelRatio || 1, coarse ? 0.8 : 1.0);
+// Profil performances : moins de pixels à traiter sur les machines modestes.
+const PR = Math.min(devicePixelRatio || 1, coarse ? 0.55 : 0.72);
 renderer.setPixelRatio(PR);
 renderer.physicallyCorrectLights = true;
 renderer.outputEncoding = THREE.LinearEncoding;
@@ -1297,14 +1298,27 @@ function buildCornfield() {
   const soil=mat(0x29271c), stalk=mat(0x59613a), leaf=mat(0x697443), dry=mat(0x8c8150), wood=mat(0x373128), rust=mat(0x4b211b);
   const add=(geo,m,x,y,z,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.castShadow=true;cornfieldRoot.add(o);return o;};
   add(new THREE.BoxGeometry(28,.16,20),soil,14,-.13,10);
-  // Rangées denses de maïs avec deux allées irrégulières : visibilité courte, silhouettes qui disparaissent entre les plants.
+  // Maïs rendu par instancing : des centaines de plants en seulement quelques draw calls.
+  const stalkGeo=new THREE.CylinderGeometry(.035,.06,1,5);
+  const leafGeo=new THREE.ConeGeometry(.055,.85,4);
+  const earGeo=new THREE.ConeGeometry(.06,.28,5);
+  const stalkData=[],leafData=[],earData=[];
   for(let z=1;z<19;z+=.62) for(let x=1.1;x<27;x+=.72){
     if((z>8.1&&z<11.8) || (x>12.3&&x<15.2&&z>3&&z<17)) continue;
     const h=1.45+Math.random()*.75, xx=x+(Math.random()-.5)*.22;
-    add(new THREE.CylinderGeometry(.035,.06,h,5),stalk,xx,h/2,z);
-    for(let k=0;k<3;k++){const side=k%2?1:-1;add(new THREE.ConeGeometry(.055,.75+Math.random()*.25,4),leaf,xx+side*.16,.3+k*.38,z,0,0,side*side*.72);}
-    if(Math.random()<.24) add(new THREE.ConeGeometry(.06,.28,5),dry,xx,h-.1,z);
+    stalkData.push([xx,h/2,z,0,h,0,0]);
+    for(let k=0;k<3;k++){const side=k%2?1:-1;leafData.push([xx+side*.16,.3+k*.38,z,side*side*.72,.75+Math.random()*.25,0,0]);}
+    if(Math.random()<.24) earData.push([xx,h-.1,z,0,.28,0,0]);
   }
+  const addInstances=(geo,material,data)=>{
+    const mesh=new THREE.InstancedMesh(geo,material,data.length);
+    const dummy=new THREE.Object3D();
+    data.forEach((v,i)=>{dummy.position.set(v[0],v[1],v[2]);dummy.rotation.set(v[6],0,v[3]);dummy.scale.set(1,v[4],1);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
+    mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=true;mesh.castShadow=false;mesh.receiveShadow=false;cornfieldRoot.add(mesh);
+  };
+  addInstances(stalkGeo,stalk,stalkData);
+  addInstances(leafGeo,leaf,leafData);
+  addInstances(earGeo,dry,earData);
   // Ferme en bois, silo, clôture cassée et lampe de chantier.
   add(new THREE.BoxGeometry(3.7,2.5,2.8),wood,24.2,1.25,16.2);
   add(new THREE.ConeGeometry(2.8,1.35,4),rust,24.2,3.15,16.2,0,Math.PI/4,0);
