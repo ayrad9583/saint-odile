@@ -90,7 +90,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
 @media (prefers-reduced-motion:reduce){h1{animation:none}}
 @media (max-width:520px){.bars{min-width:120px}.bar{grid-template-columns:58px 1fr}#msg{bottom:100px;font-size:15px}}
 
-#team{position:absolute;top:44px;right:16px;white-space:pre;text-align:right;font-size:11px;letter-spacing:.1em;color:#9fb0a2;line-height:1.7;text-shadow:0 0 4px #000}
+#flashbangFx{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:2;transition:opacity .12s linear;mix-blend-mode:screen}#hud{z-index:3}#touch{z-index:4}#combatHud{position:absolute;right:16px;bottom:16px;text-align:right;color:#d6dfd3;font-size:11px;line-height:1.65;letter-spacing:.1em;text-shadow:0 0 5px #000;white-space:pre-line}#classPicker{display:grid;gap:7px;max-width:360px;color:var(--dim);font-size:12px;letter-spacing:.12em;text-transform:uppercase}#classPicker select{background:#0e1210;border:1px solid #3a423c;color:#dfe5d9;font-family:var(--mono);font-size:13px;padding:10px;width:100%}#classDesc{font-size:12px;line-height:1.5;letter-spacing:0;text-transform:none;color:#a9b5a8}#team{position:absolute;top:44px;right:16px;white-space:pre;text-align:right;font-size:11px;letter-spacing:.1em;color:#9fb0a2;line-height:1.7;text-shadow:0 0 4px #000}
 .btn.sm{font-size:14px;padding:8px 14px}
 .btn.ghost{background:transparent;color:#d8dfd2;border:1px solid #3a423c}
 .btn.ghost:hover{background:#1a211d}
@@ -125,6 +125,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
 <body>
 <div id="stage">
   <canvas id="cv" aria-label="Vue du jeu"></canvas>
+  <div id="flashbangFx" aria-hidden="true"></div>
 
   <div id="hud" hidden>
     <div class="tl">
@@ -136,6 +137,8 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
     </div>
     <div id="hint">F lampe · Maj courir · C s'accroupir · Échap pause</div>
     <div id="team"></div>
+    <div id="combatHud">Classe · Assaut
+Flashbang · 2 [G]</div>
     <div class="bars">
       <div class="bar"><span>Lampe</span><div><b id="bat"></b></div></div>
       <div class="bar"><span>Souffle</span><div><b id="sta"></b></div></div>
@@ -154,6 +157,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
       <button class="tbtn" id="tRun" type="button">Courir</button>
       <button class="tbtn" id="tCrouch" type="button">Accroupi</button>
       <button class="tbtn" id="tAct" type="button">Action</button>
+      <button class="tbtn" id="tGrenade" type="button">Flash</button>
     </div>
   </div>
 
@@ -176,6 +180,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
         <dt>Regarder</dt><dd>Glisser à droite</dd>
         <dt>Actions</dt><dd>Boutons Lampe et Courir</dd>
       </dl>
+      <label id="classPicker">Classe de combat<select id="classSelect"><option value="assaut">Assaut — polyvalent</option><option value="medecin">Médecin — endurance</option><option value="eclaireur">Éclaireur — rapide, 3 flashbangs</option><option value="soutien">Soutien — souffle renforcé</option></select><span id="classDesc">Équilibré : vitesse et endurance standard, 2 flashbangs.</span></label>
       <button class="btn" id="startBtn" type="button" disabled>Construction de l'hôpital…</button>
       <button class="btn ghost" id="chapter2Btn" type="button" disabled>Chapitre II · Dernier métro</button>
       <button class="btn ghost" id="mpBtn" type="button" disabled>Multijoueur · salons (2 à 4 joueurs)</button>
@@ -413,14 +418,14 @@ const cv = $('cv');
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: false, powerPreference: 'high-performance' }); }
 catch (e) { $('err').hidden = false; $('title').hidden = true; return; }
-const PR = Math.min(devicePixelRatio || 1, coarse ? 1 : 1.5);
+const PR = Math.min(devicePixelRatio || 1, coarse ? 0.8 : 1.0);
 renderer.setPixelRatio(PR);
 renderer.physicallyCorrectLights = true;
 renderer.outputEncoding = THREE.LinearEncoding;
 renderer.toneMapping = THREE.NoToneMapping;
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const maxAniso = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 function tex(c, srgb) { const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = maxAniso; return t; }
 
 const scene = new THREE.Scene();
@@ -1346,7 +1351,7 @@ let flash, flashTarget, bounce, exitLight;
 function buildLights() {
   scene.add(new THREE.HemisphereLight(0x3b4a58, 0x120d08, 0.35));
   flash = new THREE.SpotLight(0xfff0d8, 0, 30, 0.46, 0.55, 2);
-  flash.castShadow = true; flash.shadow.mapSize.set(coarse ? 512 : 1024, coarse ? 512 : 1024);
+  flash.castShadow = false; flash.shadow.mapSize.set(256, 256);
   flash.shadow.camera.near = .1; flash.shadow.camera.far = 30; flash.shadow.bias = -0.0004; flash.shadow.normalBias = .02;
   flashTarget = new THREE.Object3D(); scene.add(flashTarget); flash.target = flashTarget; scene.add(flash);
   { const S = 256, c = mk(S, S), g = c.getContext('2d'), R = rng(88), gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
@@ -1828,6 +1833,67 @@ const NET = { on: false, host: false, me: 'h', name: 'Joueur', started: false, j
 const lightDir = new THREE.Vector3(1, 0, 0);
 const hud = $('hud'), msgEl = $('msg'), batEl = $('bat'), staEl = $('sta'), fuseEls = [...document.querySelectorAll('.fuses i')];
 const WALK = 1.9, RUN = 4.3, M_HUNT = 2.75, M_SEARCH = 1.9, M_WANDER = 1.05;
+/* Classes de combat et flashbangs : effets fictifs intégrés au jeu. */
+let selectedClass = 'assaut', grenadesLeft = 2, monsterStunT = 0;
+const CLASS_CONFIG = {
+  assaut: { label:'Assaut', speed:1.05, stamina:1, grenades:2, desc:'Équilibré : vitesse et endurance standard, 2 flashbangs.' },
+  medecin: { label:'Médecin', speed:.97, stamina:1.3, grenades:1, desc:'Endurance renforcée pour courir plus longtemps, 1 flashbang.' },
+  eclaireur: { label:'Éclaireur', speed:1.14, stamina:1.05, grenades:3, desc:'Le plus rapide, avec 3 flashbangs pour semer les créatures.' },
+  soutien: { label:'Soutien', speed:.94, stamina:1.55, grenades:2, desc:'Récupère vite son souffle, mais se déplace moins vite. 2 flashbangs.' }
+};
+function setCombatClass(value, resetCharges=true) {
+  selectedClass = CLASS_CONFIG[value] ? value : 'assaut';
+  const cfg = CLASS_CONFIG[selectedClass];
+  const sel = $('classSelect'); if (sel && sel.value !== selectedClass) sel.value = selectedClass;
+  const desc = $('classDesc'); if (desc) desc.textContent = cfg.desc;
+  if (resetCharges) grenadesLeft = cfg.grenades;
+  updateCombatHud();
+}
+function updateCombatHud() {
+  const el = $('combatHud'); if (el) el.textContent = `Classe · ${CLASS_CONFIG[selectedClass].label}\nFlashbang · ${grenadesLeft} [G]`;
+}
+$('classSelect').addEventListener('change', e => setCombatClass(e.target.value));
+const flashProjectiles = [];
+function flashbangThrow() {
+  if (state !== 'play') return;
+  if (grenadesLeft <= 0) { showMsg('Plus de flashbangs. Garde tes distances et fuis.', 2.2); return; }
+  grenadesLeft--; updateCombatHud();
+  const dirV = new THREE.Vector3(); camera.getWorldDirection(dirV);
+  const pos = camera.position.clone().addScaledVector(dirV, .48);
+  const mesh = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(.105, 8, 6), new THREE.MeshStandardMaterial({color:0xb9b9a0, metalness:.55, roughness:.45}));
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.045,8), new THREE.MeshStandardMaterial({color:0x383d38, metalness:.6, roughness:.5}));
+  cap.position.y=.105; mesh.add(body,cap); mesh.position.copy(pos); scene.add(mesh);
+  const vel = dirV.multiplyScalar(6.8); vel.y += 2.7;
+  flashProjectiles.push({mesh,vel,life:1.05,floor:p.fl});
+  makeNoise(4); showMsg('FLASHBANG ! Détourne le regard…', 1.3);
+}
+function flashbangImpact(x,z,f,fromNetwork=false,except=null) {
+  if (f === p.fl && Math.hypot(x-p.x,z-p.z) < 8.5) {
+    const fx=$('flashbangFx'); fx.style.opacity='.94';
+    setTimeout(()=>{fx.style.opacity='.15';},140);
+    setTimeout(()=>{fx.style.opacity='0';},760);
+    flicker(.4); shake=Math.max(shake,.18);
+  }
+  if (f === flOf(mon.h) && Math.hypot(x-mon.x,z-mon.z)<7.5) {
+    monsterStunT=Math.max(monsterStunT,4.2); mon.speedNow=0; mon.state='stunned';
+    showMsg('La créature est désorientée ! Profite-en pour t’échapper.',2.6);
+  }
+  for (const c of subwayCreatures) if (c.root.visible && Math.hypot(x-c.root.position.x,z-c.root.position.z)<7.5) c.stunT=Math.max(c.stunT||0,4.2);
+  if (NET.on && NET.host && !fromNetwork) netSend({t:'flashFx',x,z,f},except);
+  else if (NET.on && !NET.host && !fromNetwork) netSend({t:'flashImpact',x,z,f});
+}
+function updateFlashProjectiles(dt) {
+  for (let i=flashProjectiles.length-1;i>=0;i--) {
+    const g=flashProjectiles[i]; g.life-=dt; g.vel.y-=7.8*dt;
+    g.mesh.position.addScaledVector(g.vel,dt);
+    g.mesh.rotation.x+=dt*5; g.mesh.rotation.z+=dt*4;
+    if (g.life<=0 || g.mesh.position.y < g.floor*FH+.08) {
+      const x=g.mesh.position.x,z=g.mesh.position.z,f=g.floor;
+      scene.remove(g.mesh); flashProjectiles.splice(i,1); flashbangImpact(x,z,f);
+    }
+  }
+}
 /* Difficulté réduite (valeurs d'origine entre parenthèses) */
 const DIFF = {
   hunt: 2.7 /*3.3*/, stalk: 2.1 /*2.6*/, retreat: 2.9, search: 1.6 /*1.9*/, wander: .9 /*1.05*/,
@@ -1845,6 +1911,8 @@ function reset() {
   p.x = 11.2; p.z = 5.2; p.fl = 1; p.h = p.hs = FH;
   ang = Math.PI / 2 + .25; pitch = 0; bobT = 0; bobPhaseStep = 0;
   flashOn = true; battery = 100; stamina = 100; exhausted = false; carried = 0; installed = 0; notesFound = 0; powered = false; playTime = 0;
+  monsterStunT=0; grenadesLeft=CLASS_CONFIG[selectedClass].grenades; updateCombatHud();
+  for (const g of flashProjectiles) scene.remove(g.mesh); flashProjectiles.length=0;
   mon = { cfg: CFG_MON, danger: 0, d3: 99, muff: 1, rel: 0, x: 16.7, z: .95, h: 2 * FH, f: 2, state: 'dormant', path: [], route: null, ri: 0, pending: null, repath: 0, last: null, lost: 0, searchT: 0, walkPh: 0, lit: false, hissT: 0, whisperT: 5, chargeT: 0, litT: 0, watchT: 0, lostT: 0, retreatT: 0, observed: false, sLos: false, seenFlag: false, unseenT: 0, yaw: Math.PI, twitchT: 1, tiltTarget: .35, speedNow: 0, hearT: 0 };
   triggers = [
     { f: 1, x: 14.4, z: 9.8, r: 1.4, fn: () => { sfxBang(.5, .7); showMsg("Une porte a claqué, quelque part au-dessus de toi.", 3.5); } },
@@ -1983,13 +2051,14 @@ addEventListener('keydown', e => {
     else if (state === 'pause' && performance.now() - pausedAt > 350) resumeGame();
     return;
   }
-  if (state === 'play') { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ControlLeft'].includes(e.code)) e.preventDefault(); if (e.code === 'KeyF' && !e.repeat) toggleLamp(); if (e.code === 'KeyE' && !e.repeat) tryInteract(); }
+  if (state === 'play') { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ControlLeft'].includes(e.code)) e.preventDefault(); if (e.code === 'KeyF' && !e.repeat) toggleLamp(); if (e.code === 'KeyE' && !e.repeat) tryInteract(); if (e.code === 'KeyG' && !e.repeat) flashbangThrow(); }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 function toggleLamp() { if (battery <= 0) { showMsg("La lampe est morte. Trouve des piles.", 2.5); return; } flashOn = !flashOn; sfxClick(); }
 $('stage').addEventListener('pointerdown', e => { if (state !== 'play') return; if (e.pointerType === 'mouse' && document.pointerLockElement !== cv) lock(); if (e.pointerType === 'mouse' && e.button === 0) tryInteract(); });
 $('tAct').addEventListener('pointerdown', e => { e.stopPropagation(); tryInteract(); });
+$('tGrenade').addEventListener('pointerdown', e => { e.stopPropagation(); flashbangThrow(); });
 let lastCX = null, lastCY = null;
 addEventListener('mousemove', e => {
   const locked = document.pointerLockElement === cv;
@@ -2048,9 +2117,9 @@ function update(dt) {
   crouching = !!(keys.KeyC || keys.ControlLeft || touchCrouch);
   running = wantRun && !exhausted && stamina > 0 && !crouching;
   if (running) { stamina -= DIFF.runDrain * dt; if (stamina <= 0) { stamina = 0; exhausted = true; } }
-  else { stamina = Math.min(100, stamina + DIFF.staRegen * dt); if (exhausted && stamina > 35) exhausted = false; }
+  else { stamina = Math.min(100, stamina + DIFF.staRegen * CLASS_CONFIG[selectedClass].stamina * dt); if (exhausted && stamina > 35) exhausted = false; }
   const inStair = !!stairAt(p.x, p.z);
-  const sp = (running ? RUN : WALK) * (fwd < 0 ? .75 : 1) * (inStair ? .8 : 1) * (crouching ? .5 : 1) * dt;
+  const sp = (running ? RUN : WALK) * CLASS_CONFIG[selectedClass].speed * (fwd < 0 ? .75 : 1) * (inStair ? .8 : 1) * (crouching ? .5 : 1) * dt;
   const dX = Math.cos(ang), dZ = Math.sin(ang), rX = -dZ, rZ = dX;
   const mx = (dX * fwd + rX * str) * sp, mz = (dZ * fwd + rZ * str) * sp, R = .24;
   if (canStand(p.fl, p.x + mx, p.z, R)) p.x += mx;
@@ -2096,6 +2165,7 @@ function update(dt) {
     // Le rôdeur des rails et le rampant suivent le joueur dans le tunnel.
     for (let i=0;i<subwayCreatures.length;i++) {
       const c=subwayCreatures[i]; if (!c.root.visible) continue;
+      if (c.stunT>0) { c.stunT=Math.max(0,c.stunT-dt); c.parts.eyeMat.emissiveIntensity=.02; continue; }
       const dx=p.x-c.root.position.x, dz=p.z-c.root.position.z, d=Math.hypot(dx,dz);
       const delay=i===0?0:2.8;
       if (subwayClock>delay && d>.85 && p.fl===0) {
@@ -2255,6 +2325,7 @@ function updateEntity(m, dt) {
 }
 let lastStingerT = -99;
 function updateMonster(dt) {
+  if (monsterStunT > 0) { mon.speedNow=0; mon.danger=0; return; }
   if (NET.on) { if (NET.host) netMonHost(dt); monLocalFx(dt); }
   else if (mon.state === 'dormant') {
     mon.lit = false; mon.danger = 0; mon.d3 = 99; mon.observed = false;
@@ -3691,6 +3762,8 @@ function netOnMsg(link, raw) {
       updateHud(); if (NET.host) netSend(m, link.id); break;
     }
     case 'wake': if (NET.host && mon.state === 'dormant') wake(); break;
+    case 'flashImpact': if (NET.host) flashbangImpact(+m.x,+m.z,clamp(+m.f,0,2),true,link.id); break;
+    case 'flashFx': if (!NET.host) flashbangImpact(+m.x,+m.z,clamp(+m.f,0,2),true); break;
     case 'noise': if (NET.host) monNoise(m.r, m.x, m.z, m.fl); break;
   }
 }
@@ -4046,6 +4119,7 @@ function frame(now) {
     animateDressing(now); updateDebris(dt); animateSleepers(dt, now);
     if (state === 'dying') { if (killer === pat) patRoot.position.set(pat.x, p.hs + EYE + .86 - HUB_UP.y, pat.z); else monG.position.set(mon.x, p.hs + EYE - 2.05, mon.z); }
     animateFixtures(dt);
+    updateFlashProjectiles(dt);
     updateCamera(dt, now);
     postMat.uniforms.uTime.value = now / 1000;
     postMat.uniforms.uDanger.value += (danger - postMat.uniforms.uDanger.value) * Math.min(1, dt * 4);
@@ -4070,7 +4144,7 @@ setTimeout(() => {
     buildMonsterGrid();
     buildLights(); buildDust(); buildCreature(); buildPatient(); buildDirectorProps(); buildAmbienceProps(); buildInteractives(); buildSubwaySet();
     reset(); state = 'title';
-    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('mpBtn').disabled = false;
+    const b = $('startBtn'); b.disabled = false; b.textContent = "Entrer dans l'hôpital"; $('chapter2Btn').disabled = false; $('mpBtn').disabled = false; setCombatClass($('classSelect').value);
   } catch (e) { console.error(e); $('startBtn').textContent = "Erreur de chargement"; }
   requestAnimationFrame(frame);
 }, 60);
