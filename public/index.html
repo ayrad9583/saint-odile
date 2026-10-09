@@ -1952,7 +1952,7 @@ function startGame(opts) {
     showMsg("MÉTRO — Suis les panneaux de sortie. Quelque chose rampe sur les voies.", 5);
   } else showMsg("Les portes du hall sont condamnées. Trouve les trois fusibles.", 4.5);
 }
-$('startBtn').onclick = () => { if (NET.on) netLeave(); startGame(); };
+$('startBtn').onclick = () => { if (NET.on) netLeave(); setChapter(1); startGame(); };
 $('chapter2Btn').onclick = () => { if (NET.on) netLeave(); setChapter(2); startGame(); };
 $('retryBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
 $('againBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
