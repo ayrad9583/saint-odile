@@ -3895,7 +3895,7 @@ function netOnMsg(link, raw) {
     case 'welcome': {
       if (NET.host) break;
       NET.me = m.id; NET.joined = true; NET.started = !!m.started; NET.roomName = String(m.room || 'Salon'); NET.max = m.max || 4;
-      setChapter([1,2,3,4].includes(Number(m.chapter)) ? Number(m.chapter) : 1);
+      setChapter([1,2,3,4,5].includes(Number(m.chapter)) ? Number(m.chapter) : 1);
       mpView('room'); mpStatus(`Connecté à ${m.host || 'l\'hôte'}. ${m.started ? 'La partie est en cours…' : 'En attente du lancement par l\'hôte.'}`);
       if (m.started) { startGame('net'); applySnap(m.snap); }
       break;
@@ -4268,7 +4268,7 @@ function mpNameVal() { const v = ($('mpName').value || '').trim().slice(0, 14) |
   });
   const startAll = () => { if (!(NET.on && NET.host)) return; NET.started = true; netSend({t:'start', chapter}); mpWsSend({type:'start-room', roomId:NET.room}); startGame(); };
   $('mpStartBtn').onclick = startAll;
-  $('mpChapterBtn').onclick = () => { if (!(NET.on && NET.host && !NET.started)) return; setChapter(chapter >= 4 ? 1 : chapter+1); NET.ready = {}; netLobbyBroadcast(); mpStatus('Chapitre sélectionné pour tous les joueurs : '+CHAPTER_NAMES[chapter-1]+'.'); };
+  $('mpChapterBtn').onclick = () => { if (!(NET.on && NET.host && !NET.started)) return; setChapter(chapter >= 5 ? 1 : chapter+1); NET.ready = {}; netLobbyBroadcast(); mpStatus('Chapitre sélectionné pour tous les joueurs : '+CHAPTER_NAMES[chapter-1]+'.'); };
   $('mpResetBtn').onclick = startAll;
   addEventListener('pagehide', () => { if (NET.on) { try { netLeave(); } catch (_) {} } });
   setInterval(() => { if (MP_SIGNAL.ws && MP_SIGNAL.ws.readyState === WebSocket.OPEN && !$('mp').hidden && $('mpMenu') && !$('mpMenu').hidden) mpWsSend({type:'list'}); }, 5000);
