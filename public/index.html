@@ -2126,8 +2126,8 @@ $('startBtn').onclick = () => { if (NET.on) netLeave(); setChapter(chapter); sta
 $('chapter2Btn').onclick = () => { if (NET.on) netLeave(); setChapter(2); startGame(); };
 $('chapter3Btn').onclick = () => { if (NET.on) netLeave(); setChapter(3); startGame(); };
 $('chapter4Btn').onclick = () => { if (NET.on) netLeave(); setChapter(4); startGame(); };
-$('retryBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
-$('againBtn').onclick = () => { if (NET.on && NET.started) respawn(); else startGame(); };
+$('retryBtn').onclick = () => { if (NET.on && NET.started) respawn(); else { setChapter(chapter); startGame(); } };
+$('againBtn').onclick = () => { if (NET.on && NET.started) respawn(); else { setChapter(chapter); startGame(); } };
 $('resumeBtn').onclick = resumeGame;
 function closeNote() { if (state !== 'note') return; state = 'play'; show(null); lock(); }
 $('noteBtn').onclick = closeNote;
@@ -2215,6 +2215,12 @@ function updateVisibility() {
 }
 function update(dt) {
   playTime += dt;
+  const gracePeriod = playTime < 90;
+  if (gracePeriod && $('obj') && !NET.on) $('obj').dataset.grace = '1';
+  if ($('obj') && !NET.on && playTime >= 90 && $('obj').dataset.grace === '1') {
+    delete $('obj').dataset.grace;
+    showMsg("90 SECONDES ÉCOULÉES — LES CRÉATURES SONT MAINTENANT ACTIVES.", 4);
+  }
   if ((chapter===3 || chapter===4) && $('caseTime')) { const t=playTime|0; $('caseTime').textContent=(chapter===3?'21:24:':'02:17:')+String(t%60).padStart(2,'0'); }
   edgeLook(dt); updateLockHint(); updateMedical(dt);
   ang += ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) * 2.2 * dt;
@@ -2310,8 +2316,18 @@ function update(dt) {
   }
   if (chapter !== 2 && p.fl === 1 && p.x > 26.7 && p.z > 3.0 && p.z < 4.6) { if (powered) { win(); return; } if (lockMsgT <= 0) { showMsg(`La porte de secours ne s'ouvre pas sans courant (fusibles en place : ${installed}/3).`, 3); lockMsgT = 5; } }
   if (lockMsgT > 0) lockMsgT -= dt;
-  updateMonster(dt);
-  if (state === 'play') { director(dt); ambience(dt); }
+  if (playTime >= 90) {
+    updateMonster(dt);
+    if (state === 'play') updatePatient(dt);
+    if (state === 'play') { director(dt); ambience(dt); }
+  } else {
+    // Période de sécurité : aucun ennemi ne peut lancer de poursuite ni infliger de dégâts.
+    danger = 0;
+    if (NET.host && NET.started) {
+      mon.state = 'dormant'; mon.speedNow = 0;
+      subwayCreatures.forEach(c => { c.stunT = Math.max(c.stunT || 0, 0.1); });
+    }
+  }
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) msgEl.classList.remove('on'); }
   batEl.style.width = battery + '%'; batEl.classList.toggle('low', battery < 25);
   staEl.style.width = stamina + '%'; staEl.classList.toggle('low', exhausted);
@@ -4018,6 +4034,7 @@ function netTick(dt, now) {
 }
 function respawn() {
   killer = null; dyingT = 0;
+  if (chapter !== 1) { startGame(NET.on && NET.started ? 'net' : undefined); return; }
   p.x = 11.2; p.z = 5.2; p.fl = 1; p.h = p.hs = FH;
   ang = Math.PI / 2 + .25; pitch = 0; flashOn = true; battery = Math.max(battery, 70); stamina = 100; exhausted = false;
   resetPatient(); resetDirector(); resetMedical(); shake = 0; pulse = 0; eyeH = EYE; danger = 0; fade = 1; lastFl = -1; mbox.i = 0; mbox.t = 0;
