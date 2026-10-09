@@ -90,7 +90,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
 @media (prefers-reduced-motion:reduce){h1{animation:none}}
 @media (max-width:520px){.bars{min-width:120px}.bar{grid-template-columns:58px 1fr}#msg{bottom:100px;font-size:15px}}
 
-#flashbangFx{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:2;transition:opacity .12s linear;mix-blend-mode:screen}#caseOverlay{position:absolute;top:15px;left:18px;right:18px;display:flex;justify-content:space-between;gap:12px;pointer-events:none;color:#d6d9ce;font:11px/1.4 monospace;letter-spacing:.13em;text-shadow:0 1px 3px #000,0 0 7px #000;z-index:5;opacity:.88}#caseOverlay[hidden]{display:none}#caseOverlay .rec{color:#f06d65}#caseOverlay .rec:before{content:'● ';animation:recBlink 1.2s steps(2,start) infinite}@keyframes recBlink{to{visibility:hidden}}#hud{z-index:3}#touch{z-index:4}#combatHud{position:absolute;right:16px;bottom:16px;text-align:right;color:#d6dfd3;font-size:11px;line-height:1.65;letter-spacing:.1em;text-shadow:0 0 5px #000;white-space:pre-line}#classPicker{display:grid;gap:7px;max-width:360px;color:var(--dim);font-size:12px;letter-spacing:.12em;text-transform:uppercase}#classPicker select{background:#0e1210;border:1px solid #3a423c;color:#dfe5d9;font-family:var(--mono);font-size:13px;padding:10px;width:100%}#classDesc{font-size:12px;line-height:1.5;letter-spacing:0;text-transform:none;color:#a9b5a8}#team{position:absolute;top:44px;right:16px;white-space:pre;text-align:right;font-size:11px;letter-spacing:.1em;color:#9fb0a2;line-height:1.7;text-shadow:0 0 4px #000}
+#bloodFx{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:0;background:radial-gradient(ellipse at 50% 50%,transparent 34%,rgba(80,0,0,.15) 58%,rgba(120,0,0,.72) 100%),radial-gradient(ellipse at 12% 18%,rgba(120,8,8,.75) 0 2%,transparent 10%),radial-gradient(ellipse at 88% 30%,rgba(100,0,0,.65) 0 1.5%,transparent 9%),radial-gradient(ellipse at 20% 84%,rgba(130,0,0,.55) 0 2%,transparent 12%);transition:opacity .12s linear;mix-blend-mode:multiply} #flashbangFx{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:2;transition:opacity .12s linear;mix-blend-mode:screen}#caseOverlay{position:absolute;top:15px;left:18px;right:18px;display:flex;justify-content:space-between;gap:12px;pointer-events:none;color:#d6d9ce;font:11px/1.4 monospace;letter-spacing:.13em;text-shadow:0 1px 3px #000,0 0 7px #000;z-index:5;opacity:.88}#caseOverlay[hidden]{display:none}#caseOverlay .rec{color:#f06d65}#caseOverlay .rec:before{content:'● ';animation:recBlink 1.2s steps(2,start) infinite}@keyframes recBlink{to{visibility:hidden}}#hud{z-index:3}#touch{z-index:4}#combatHud{position:absolute;right:16px;bottom:16px;text-align:right;color:#d6dfd3;font-size:11px;line-height:1.65;letter-spacing:.1em;text-shadow:0 0 5px #000;white-space:pre-line}#classPicker{display:grid;gap:7px;max-width:360px;color:var(--dim);font-size:12px;letter-spacing:.12em;text-transform:uppercase}#classPicker select{background:#0e1210;border:1px solid #3a423c;color:#dfe5d9;font-family:var(--mono);font-size:13px;padding:10px;width:100%}#classDesc{font-size:12px;line-height:1.5;letter-spacing:0;text-transform:none;color:#a9b5a8}#team{position:absolute;top:44px;right:16px;white-space:pre;text-align:right;font-size:11px;letter-spacing:.1em;color:#9fb0a2;line-height:1.7;text-shadow:0 0 4px #000}
 .btn.sm{font-size:14px;padding:8px 14px}
 .btn.ghost{background:transparent;color:#d8dfd2;border:1px solid #3a423c}
 .btn.ghost:hover{background:#1a211d}
@@ -126,6 +126,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
 <div id="stage">
   <canvas id="cv" aria-label="Vue du jeu"></canvas>
   <div id="flashbangFx" aria-hidden="true"></div>
+  <div id="bloodFx" aria-hidden="true"></div>
   <div id="caseOverlay" hidden aria-hidden="true"><span id="caseLabel">MAPLE COURT · CAM 03C</span><span class="rec">REC</span><span id="caseTime">21:24:18</span></div>
 
   <div id="hud" hidden>
@@ -4253,9 +4254,10 @@ function frame(now) {
     else { mon.x = p.x + fx * .8; mon.z = p.z + fz * .8; mon.yaw = Math.atan2(-fx, -fz); }
     pitch += (0.05 - pitch) * Math.min(1, dt * 10);
     danger = 1; postMat.uniforms.uHit.value = .4 + Math.random() * .4; flickerT = .1;
+    const bloodFx = $('bloodFx'); if (bloodFx) bloodFx.style.opacity = String(.45 + Math.random() * .35);
     if (dyingT < .3) fade = Math.max(0, dyingT / .3);
     if (dyingT <= 0) { state = 'dead'; $('dTime').textContent = fmt(playTime); $('dFuse').textContent = `${carried + installed}/3`; $('dNotes').textContent = `${notesFound}/4`; show('dead'); }
-  } else { postMat.uniforms.uHit.value *= .9; if (state === 'play' || state === 'title') fade = Math.min(1, fade + dt * 2); }
+  } else { postMat.uniforms.uHit.value *= .9; const bloodFx = $('bloodFx'); if (bloodFx) bloodFx.style.opacity = state === 'play' && danger > .65 ? '.22' : '0'; if (state === 'play' || state === 'title') fade = Math.min(1, fade + dt * 2); }
   postMat.uniforms.uGlitch.value *= Math.exp(-dt * 5); postMat.uniforms.uPulse.value = pulse;
   scene.fog.density = p.fl === 0 ? .075 : .06;
   if (state !== 'loading') {
