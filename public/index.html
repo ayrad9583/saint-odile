@@ -188,6 +188,7 @@ Flashbang · 2 [G]</div>
       <button class="btn ghost" id="chapter2Btn" type="button" disabled>Chapitre II · Dernier métro</button>
       <button class="btn ghost" id="chapter3Btn" type="button" disabled>Chapitre III · Maple Court</button>
       <button class="btn ghost" id="chapter4Btn" type="button" disabled>Chapitre IV · Alerte rouge</button>
+      <button class="btn ghost" id="chapter5Btn" type="button" disabled>Chapitre V · Les champs de maïs</button>
       <button class="btn ghost" id="mpBtn" type="button" disabled>Multijoueur · salons (2 à 4 joueurs)</button>
       <p class="fine">Casque recommandé. Le son démarre au clic.</p>
     </div>
@@ -1986,6 +1987,7 @@ function reset() {
   if (subwayRoot) subwayRoot.visible = chapter === 2;
   if (apartmentRoot) apartmentRoot.visible = chapter === 3;
   if (policeRoot) policeRoot.visible = chapter === 4;
+  if (cornfieldRoot) cornfieldRoot.visible = chapter === 5;
   subwayCreatures.forEach((c,i)=>{ c.root.visible = chapter===2 || (chapter===3&&i===0) || (chapter===4&&i===1); c.phase=0; c.stunT=0; });
   items.forEach(it => it.g.parent && it.g.parent.remove(it.g));
   items = itemDefs.map((d, i) => { const it = makeItem(d); it.id = i; return it; }); NET.myFuses = []; NET.pickReq = {};
@@ -2044,6 +2046,7 @@ function objective() {
   if (chapter === 2) return subwayGateOpen ? 'Objectif · franchir la sortie de service' : 'Objectif · trouver la commande de la porte de service au bout du quai';
   if (chapter === 3) return 'Objectif · preuves de Maple Court ('+chapterEvidence+'/3) — puis rejoindre la sortie de secours';
   if (chapter === 4) return 'Objectif · cassettes de surveillance ('+chapterEvidence+'/3) — évacuer par la sortie est';
+  if (chapter === 5) return 'Objectif · enregistrements des champs ('+chapterEvidence+'/3) — atteindre la ferme';
   if (powered) return 'Objectif · la sortie de secours (rez-de-chaussée, bout du couloir est)';
   const tf = teamFuses();
   if (tf < 3) {
@@ -2086,17 +2089,19 @@ document.addEventListener('pointerlockchange', () => { const locked = document.p
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 let chapter = 1, subwayCreatures = [], subwayClock = 0, subwayGateOpen = false, subwayRoot = null;
 let apartmentRoot = null, policeRoot = null, chapterEvidence = 0, evidenceMarks = [];
-const CHAPTER_NAMES = ['I · Hôpital','II · Métro','III · Maple Court','IV · Alerte rouge'];
+const CHAPTER_NAMES = ['I · Hôpital','II · Métro','III · Maple Court','IV · Alerte rouge','V · Champs de maïs'];
+let cornfieldRoot = null;
 function setChapter(n) {
-  chapter = Math.max(1,Math.min(4,Number(n)||1));
+  chapter = Math.max(1,Math.min(5,Number(n)||1));
   $('storyLede').textContent = ({
     1:"Chapitre I — Tu es entré par le hall d'accueil. Les portes se sont refermées derrière toi. Retrouve les trois fusibles, remets le courant et cherche la sortie. Tu n'es pas seul.",
     2:"Chapitre II — Dernier métro. Une rame abandonnée bloque le tunnel. Traverse le quai, évite les silhouettes sur les rails et atteins la sortie de service.",
     3:"Chapitre III — Maple Court, 28 novembre 2004. Une intervention policière a été interrompue dans l'appartement 3C. Retrouve trois preuves, puis rejoins l'escalier de secours. Quelqu'un imite les voix des résidents.",
-    4:"Chapitre IV — Alerte rouge. Les archives de police montrent que plusieurs immeubles ont été ciblés. Récupère trois cassettes de surveillance et évacue avant que l'alerte ne soit coupée."
+    4:"Chapitre IV — Alerte rouge. Les archives de police montrent que plusieurs immeubles ont été ciblés. Récupère trois cassettes de surveillance et évacue avant que l'alerte ne soit coupée.",
+    5:"Chapitre V — Les champs de maïs, 03 h 17. Une équipe de recherche a disparu près d'une ferme abandonnée. Suis les balises, récupère trois enregistrements et ne réponds pas aux voix qui t'appellent depuis les rangées."
   })[chapter];
-  $('startBtn').textContent = chapter === 1 ? "Entrer dans l'hôpital" : "Commencer le chapitre " + ['I','II','III','IV'][chapter-1];
-  if ($('caseOverlay')) { $('caseOverlay').hidden = true; $('caseLabel').textContent = chapter===3 ? 'MAPLE COURT · CAM 03C' : 'POLICE ARCHIVE · INCIDENT 04-1128'; }
+  $('startBtn').textContent = chapter === 1 ? "Entrer dans l'hôpital" : "Commencer le chapitre " + ['I','II','III','IV','V'][chapter-1];
+  if ($('caseOverlay')) { $('caseOverlay').hidden = true; $('caseLabel').textContent = chapter===3 ? 'MAPLE COURT · CAM 03C' : chapter===4 ? 'POLICE ARCHIVE · INCIDENT 04-1128' : 'CAMÉRA THERMIQUE · SECTEUR MAÏS 05'; }
   if (subwayRoot) subwayRoot.visible = chapter === 2;
   if (apartmentRoot) apartmentRoot.visible = chapter === 3;
   if (policeRoot) policeRoot.visible = chapter === 4;
@@ -2106,19 +2111,19 @@ function startGame(opts) {
   const fromNet = opts === 'net';
   try { initAudio(); } catch (e) {}
   reset(); state = 'play'; show(null); if (!fromNet) lock(); mouse.inside = false;
-  $('caseOverlay').hidden = !(chapter===3 || chapter===4);
-  $('caseLabel').textContent = chapter===3 ? 'MAPLE COURT · CAM 03C' : 'POLICE ARCHIVE · INCIDENT 04-1128';
+  $('caseOverlay').hidden = !(chapter===3 || chapter===4 || chapter===5);
+  $('caseLabel').textContent = chapter===3 ? 'MAPLE COURT · CAM 03C' : chapter===4 ? 'POLICE ARCHIVE · INCIDENT 04-1128' : 'CAMÉRA THERMIQUE · SECTEUR MAÏS 05';
   if (chapter === 2) {
     p.x = 3.2; p.z = 9.7; p.fl = 0; p.h = p.hs = 0;
     mon.x = 24.5; mon.z = 9.6; mon.h = 0; mon.f = 0; mon.state = 'stalk'; mon.speedNow = .2;
     subwayClock = 0; subwayGateOpen = false;
     subwayCreatures.forEach((c,i)=>{c.root.position.set(i===0?20.5:25.3,0,9.7);c.root.visible=true;});
     showMsg("MÉTRO — Suis les panneaux de sortie. Quelque chose rampe sur les voies.", 5);
-  } else if (chapter === 3 || chapter === 4) {
+  } else if (chapter === 3 || chapter === 4 || chapter === 5) {
     p.x=3.2; p.z=9.7; p.fl=0; p.h=p.hs=0;
     mon.x=chapter===3?22.5:25.0; mon.z=9.6; mon.h=0; mon.f=0; mon.state='stalk'; mon.speedNow=.2;
     subwayClock=0; chapterEvidence=0;
-    evidenceMarks=(chapter===3?[7.5,14.2,20.8]:[6.5,13.8,21.2]).map(x=>({x,done:false}));
+    evidenceMarks=(chapter===3?[7.5,14.2,20.8]:chapter===4?[6.5,13.8,21.2]:[6.2,13.8,21.4]).map(x=>({x,done:false}));
     subwayCreatures.forEach((c,i)=>{c.root.position.set(chapter===3?22.5+i*2:19.5+i*3,0,9.7);c.root.visible=(chapter===3&&i===0)||(chapter===4&&i===1);c.stunT=0;});
     showMsg(chapter===3?"MAPLE COURT — Appartement 3C. Les enregistrements ne correspondent pas aux voix que tu entends.":"ALERTE ROUGE — Récupère les trois cassettes. Ne fais confiance à aucune voix à la radio.",5);
   } else showMsg("Les portes du hall sont condamnées. Trouve les trois fusibles.", 4.5);
@@ -2127,6 +2132,7 @@ $('startBtn').onclick = () => { if (NET.on) netLeave(); setChapter(chapter); sta
 $('chapter2Btn').onclick = () => { if (NET.on) netLeave(); setChapter(2); startGame(); };
 $('chapter3Btn').onclick = () => { if (NET.on) netLeave(); setChapter(3); startGame(); };
 $('chapter4Btn').onclick = () => { if (NET.on) netLeave(); setChapter(4); startGame(); };
+$('chapter5Btn').onclick = () => { if (NET.on) netLeave(); setChapter(5); startGame(); };
 $('retryBtn').onclick = () => { if (NET.on && NET.started) respawn(); else { setChapter(chapter); startGame(); } };
 $('againBtn').onclick = () => { if (NET.on && NET.started) respawn(); else { setChapter(chapter); startGame(); } };
 $('resumeBtn').onclick = resumeGame;
