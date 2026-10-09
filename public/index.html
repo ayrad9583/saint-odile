@@ -254,6 +254,7 @@ kbd{font-family:var(--mono);border:1px solid #3a423c;border-bottom-width:2px;pad
         <div id="mpChatLog" aria-live="polite"></div>
         <input id="mpChatIn" maxlength="120" autocomplete="off" placeholder="Écrire aux autres joueurs… (Entrée pour envoyer)">
         <div class="mpbtns">
+          <button class="btn ghost" id="mpChapterBtn" type="button" hidden>Chapitre sélectionné : I · Hôpital</button>
           <button class="btn" id="mpStartBtn" type="button" hidden>Lancer la partie</button>
           <button class="btn ghost" id="mpReadyBtn" type="button" hidden>Je suis prêt</button>
           <button class="btn ghost" id="mpLeaveBtn" type="button">Quitter le salon</button>
@@ -1942,7 +1943,6 @@ function setChapter(n) {
 }
 function startGame(opts) {
   const fromNet = opts === 'net';
-  if (fromNet) chapter = 1;
   try { initAudio(); } catch (e) {}
   reset(); state = 'play'; show(null); if (!fromNet) lock(); mouse.inside = false;
   if (chapter === 2) {
@@ -2444,7 +2444,8 @@ function die(m) {
   else { $('dKick').textContent = 'Aile B · Chambre 13'; $('dTitle').textContent = "Il t'a trouvé."; $('dLede').textContent = 'Tu fais maintenant partie des patients de Sainte-Odile.'; }
 }
 let killer = null;
-function win() {
+function win(fromNetwork = false) {
+  if (NET.on && NET.started && !fromNetwork) netSend({ t: 'chapterWin' });
   state = 'win'; sfxPower(); $('againBtn').textContent = NET.on && NET.started ? 'Retourner aider' : 'Rejouer';
   if (growlGain) growlGain.gain.setTargetAtTime(0, AC.currentTime, .4);
   if (gurgleGain) gurgleGain.gain.setTargetAtTime(0, AC.currentTime, .4);
@@ -3637,12 +3638,13 @@ function netOnMsg(link, raw) {
       if (!known && NET.pw && !link.rtc && String(m.pw || '') !== NET.pw) { link.send(JSON.stringify({ t: 'denied', why: 'pw' })); break; }
       if (!link.id) link.id = 'p' + (++NET.seq);
       NET.links[link.id] = link; NET.lobby[link.id] = String(m.n || 'Joueur').slice(0, 14);
-      link.send(JSON.stringify({ t: 'welcome', id: link.id, started: NET.started, snap: NET.started ? netSnap() : null, host: NET.name, room: NET.roomName, max: NET.max }));
+      link.send(JSON.stringify({ t: 'welcome', id: link.id, started: NET.started, chapter, snap: NET.started ? netSnap() : null, host: NET.name, room: NET.roomName, max: NET.max }));
       netLobbyBroadcast(); break;
     }
     case 'welcome': {
       if (NET.host) break;
       NET.me = m.id; NET.joined = true; NET.started = !!m.started; NET.roomName = String(m.room || 'Salon'); NET.max = m.max || 4;
+      setChapter(m.chapter === 2 ? 2 : 1);
       mpView('room'); mpStatus(`Connecté à ${m.host || 'l\'hôte'}. ${m.started ? 'La partie est en cours…' : 'En attente du lancement par l\'hôte.'}`);
       if (m.started) { startGame('net'); applySnap(m.snap); }
       break;
@@ -3658,8 +3660,9 @@ function netOnMsg(link, raw) {
       else mpChatAdd(String(m.n || 'Joueur').slice(0, 14), String(m.s || '').slice(0, 120));
       break;
     }
-    case 'lobby': NET.lobby = Object.fromEntries(m.list); NET.ready = m.ready || {}; mpRenderLobby(); break;
-    case 'start': if (!NET.host) { NET.started = true; startGame('net'); } break;
+    case 'lobby': if (!NET.host && m.chapter) setChapter(m.chapter); NET.lobby = Object.fromEntries(m.list); NET.ready = m.ready || {}; mpRenderLobby(); break;
+    case 'start': if (!NET.host) { NET.started = true; setChapter(m.chapter === 2 ? 2 : 1); startGame('net'); } break;
+    case 'chapterWin': if (!NET.host && NET.started && state === 'play') { win(true); } break;
     case 'bye': removePlayer(m.id); break;
     case 'ps': {
       const id = NET.host ? link.id : m.id; if (!id || id === NET.me) break;
@@ -3697,7 +3700,7 @@ function netSend(msg, except) {
   if (NET.host) { for (const id in NET.links) if (id !== except) { try { NET.links[id].send(s); } catch (e) {} } }
   else if (NET.hostLink) { try { NET.hostLink.send(s); } catch (e) {} }
 }
-function netLobbyBroadcast() { netSend({ t: 'lobby', list: Object.entries(NET.lobby), ready: NET.ready }); mpRenderLobby(); if (NET.host && NET.room) mpWsSend({type:'room-update', roomId:NET.room, n:Object.keys(NET.lobby).length, started:NET.started}); }
+function netLobbyBroadcast() { netSend({ t: 'lobby', list: Object.entries(NET.lobby), ready: NET.ready, chapter }); mpRenderLobby(); if (NET.host && NET.room) mpWsSend({type:'room-update', roomId:NET.room, n:Object.keys(NET.lobby).length, started:NET.started}); }
 function netLinkClosed(link) {
   if (NET.host) {
     const id = link.id; if (!id || !NET.links[id]) return;
@@ -3975,8 +3978,10 @@ function mpRenderLobby() {
     }
     ul.appendChild(li);
   }
-  if (NET.on) $('mpRoomInfo').textContent = `${NET.roomName || 'Salon'} · ${ids.length}/${NET.max} joueurs${NET.pw ? ' · protégé par mot de passe' : ''}${NET.started ? ' · partie en cours' : ''}`;
+  if (NET.on) $('mpRoomInfo').textContent = `${NET.roomName || 'Salon'} · ${ids.length}/${NET.max} joueurs · ${chapter === 2 ? 'Chapitre II · Métro' : 'Chapitre I · Hôpital'}${NET.pw ? ' · protégé par mot de passe' : ''}${NET.started ? ' · partie en cours' : ''}`;
   const guests = ids.filter(i => i !== 'h'), nr = guests.filter(i => NET.ready[i]).length;
+  $('mpChapterBtn').hidden = !(NET.on && NET.host && !NET.started);
+  $('mpChapterBtn').textContent = chapter === 2 ? 'Chapitre sélectionné : II · Métro (cliquer pour I)' : 'Chapitre sélectionné : I · Hôpital (cliquer pour II)';
   $('mpStartBtn').hidden = !(NET.on && NET.host && !NET.started);
   $('mpStartBtn').textContent = guests.length ? `Lancer la partie (${nr}/${guests.length} prêts)` : 'Lancer la partie (seul)';
   $('mpReadyBtn').hidden = !(NET.on && !NET.host && !NET.started);
@@ -4007,8 +4012,9 @@ function mpNameVal() { const v = ($('mpName').value || '').trim().slice(0, 14) |
     const s = e.target.value.trim().slice(0,120); e.target.value = ''; if (!s || !NET.on) return;
     mpChatAdd(NET.name, s); if (NET.host) netSend({t:'chat', n:NET.name, s}); else netSend({t:'chat', s});
   });
-  const startAll = () => { if (!(NET.on && NET.host)) return; NET.started = true; netSend({t:'start'}); mpWsSend({type:'start-room', roomId:NET.room}); startGame(); };
+  const startAll = () => { if (!(NET.on && NET.host)) return; NET.started = true; netSend({t:'start', chapter}); mpWsSend({type:'start-room', roomId:NET.room}); startGame(); };
   $('mpStartBtn').onclick = startAll;
+  $('mpChapterBtn').onclick = () => { if (!(NET.on && NET.host && !NET.started)) return; setChapter(chapter === 1 ? 2 : 1); NET.ready = {}; netLobbyBroadcast(); mpStatus(chapter === 2 ? 'Le chapitre II est sélectionné pour tous les joueurs.' : 'Le chapitre I est sélectionné pour tous les joueurs.'); };
   $('mpResetBtn').onclick = startAll;
   addEventListener('pagehide', () => { if (NET.on) { try { netLeave(); } catch (_) {} } });
   setInterval(() => { if (MP_SIGNAL.ws && MP_SIGNAL.ws.readyState === WebSocket.OPEN && !$('mp').hidden && $('mpMenu') && !$('mpMenu').hidden) mpWsSend({type:'list'}); }, 5000);
