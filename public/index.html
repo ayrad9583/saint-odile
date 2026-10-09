@@ -3662,7 +3662,7 @@ function netOnMsg(link, raw) {
     }
     case 'lobby': if (!NET.host && m.chapter) setChapter(m.chapter); NET.lobby = Object.fromEntries(m.list); NET.ready = m.ready || {}; mpRenderLobby(); break;
     case 'start': if (!NET.host) { NET.started = true; setChapter(m.chapter === 2 ? 2 : 1); startGame('net'); } break;
-    case 'chapterWin': if (!NET.host && NET.started && state === 'play') { win(true); } break;
+    case 'chapterWin': if (NET.host && NET.started) { netSend({ t: 'chapterWin' }, link.id); if (state === 'play') win(true); } else if (!NET.host && NET.started && state === 'play') { win(true); } break;
     case 'bye': removePlayer(m.id); break;
     case 'ps': {
       const id = NET.host ? link.id : m.id; if (!id || id === NET.me) break;
