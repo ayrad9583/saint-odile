@@ -51,6 +51,15 @@ wss.on('connection', ws => {
     if (m.type === 'signal') {
       if (ws === r.hostSocket) { const target=[...r.clients.values()].find(p=>p.peerId===m.to); if (target) send(target.ws,{type:'signal',from:'host',data:m.data}); }
       else { const p=r.clients.get(ws); if (p) send(r.hostSocket,{type:'signal',from:p.peerId,data:m.data}); }
+    } else if (m.type === 'relay') {
+      // Relay gameplay data through Render when direct WebRTC connections are blocked.
+      if (ws === r.hostSocket) {
+        const target=[...r.clients.values()].find(p=>p.peerId===m.to);
+        if (target) send(target.ws,{type:'relay',from:'host',data:m.data});
+      } else {
+        const p=r.clients.get(ws);
+        if (p) send(r.hostSocket,{type:'relay',from:p.peerId,data:m.data});
+      }
     } else if (m.type === 'room-update' && ws===r.hostSocket) { r.started=!!m.started; broadcastRooms(); }
     else if (m.type === 'start-room' && ws===r.hostSocket) { r.started=true; for (const c of r.clients.values()) send(c.ws,{type:'room-started'}); broadcastRooms(); }
     else if (m.type === 'reject-peer' && ws===r.hostSocket) { const target=[...r.clients.values()].find(p=>p.peerId===m.peerId); if(target) { send(target.ws,{type:'join-error',message:'Le salon est complet.'}); target.ws.close(); } }
